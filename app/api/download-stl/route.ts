@@ -6,9 +6,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-01-27.acacia'
 })
 
-export async function GET(req: Request) {
+export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(req.url)
+    const searchParams = new URL(request.url).searchParams
     const sessionId = searchParams.get('session_id')
 
     if (!sessionId) {
