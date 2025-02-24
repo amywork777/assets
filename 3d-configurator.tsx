@@ -6,11 +6,12 @@ import { OrbitControls, Environment, MeshTransmissionMaterial, Center } from "@r
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Download, CuboidIcon as Cube } from "lucide-react"
+import { Download } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STLExporter } from 'three/addons/exporters/STLExporter.js'
 import * as THREE from 'three'
 import { DoubleSide } from 'three'
+import Image from 'next/image'
 
 interface PriceInfo {
   dimensions: string;
@@ -1280,7 +1281,13 @@ export default function Component() {
         <header className="flex flex-col gap-4 pt-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Cube className="w-8 h-8 text-white/80" />
+              <Image
+                src="/taiyaki-logo.svg"
+                alt="Taiyaki Logo"
+                width={80}
+                height={80}
+                className="text-white"
+              />
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-bold tracking-tight">3D Homegoods Design</h1>
