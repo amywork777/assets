@@ -99,14 +99,6 @@ const materials = {
       color: "#ffffff",
     },
   },
-  matte: {
-    type: "standard",
-    props: {
-      metalness: 0,
-      roughness: 1,
-      color: "#ffffff",
-    },
-  },
 }
 
 function Scene({ params }) {
@@ -317,14 +309,13 @@ export default function Component() {
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">Material</Label>
                   <Select value={shapeParams.material} onValueChange={(value) => updateParam("material", value)}>
-                    <SelectTrigger className="bg-zinc-900 border-zinc-700">
+                    <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-zinc-700">
-                      <SelectItem value="glass">Glass</SelectItem>
-                      <SelectItem value="metal">Metal</SelectItem>
-                      <SelectItem value="ceramic">Ceramic</SelectItem>
-                      <SelectItem value="matte">Matte</SelectItem>
+                      <SelectItem value="glass" className="text-white hover:bg-zinc-800">Glass</SelectItem>
+                      <SelectItem value="metal" className="text-white hover:bg-zinc-800">Metal</SelectItem>
+                      <SelectItem value="ceramic" className="text-white hover:bg-zinc-800">Ceramic</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
