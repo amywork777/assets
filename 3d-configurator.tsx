@@ -228,40 +228,40 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
   switch (type) {
     case 'standard':
       return [
-        { id: "height" as const, label: "Height (cm)", min: 5, max: 50, step: 0.1 },
-        { id: "topRadius" as const, label: "Top Radius (cm)", min: 2, max: 20, step: 0.1 },
-        { id: "bottomRadius" as const, label: "Bottom Radius (cm)", min: 2, max: 20, step: 0.1 },
-        { id: "waveAmplitude" as const, label: "Wave Amplitude (cm)", min: 0, max: 5, step: 0.1 },
+        { id: "height" as const, label: "Height (in)", min: 2, max: 20, step: 0.1 },
+        { id: "topRadius" as const, label: "Top Radius (in)", min: 0.8, max: 8, step: 0.1 },
+        { id: "bottomRadius" as const, label: "Bottom Radius (in)", min: 0.8, max: 8, step: 0.1 },
+        { id: "waveAmplitude" as const, label: "Wave Amplitude (in)", min: 0, max: 2, step: 0.1 },
         { id: "waveFrequency" as const, label: "Wave Frequency", min: 0, max: 16, step: 0.1 },
         { id: "twist" as const, label: "Twist (turns)", min: 0, max: 3, step: 0.1 },
       ] as const
     case 'wallArt':
       return [
-        { id: "width" as const, label: "Width (cm)", min: 15, max: 50, step: 0.1 },
-        { id: "height" as const, label: "Height (cm)", min: 15, max: 50, step: 0.1 },
-        { id: "depth" as const, label: "Depth (cm)", min: 1, max: 5, step: 0.1 },
+        { id: "width" as const, label: "Width (in)", min: 6, max: 20, step: 0.1 },
+        { id: "height" as const, label: "Height (in)", min: 6, max: 20, step: 0.1 },
+        { id: "depth" as const, label: "Depth (in)", min: 0.4, max: 2, step: 0.1 },
         { id: "patternScale" as const, label: "Pattern Scale", min: 1, max: 5, step: 0.1 },
         { id: "patternDepth" as const, label: "Pattern Depth (mm)", min: 0.2, max: 2, step: 0.1 },
       ] as const
     case 'candleHolder':
       return [
-        { id: "height" as const, label: "Height (cm)", min: 8, max: 20, step: 0.1 },
-        { id: "diameter" as const, label: "Diameter (cm)", min: 6, max: 15, step: 0.1 },
+        { id: "height" as const, label: "Height (in)", min: 3, max: 8, step: 0.1 },
+        { id: "diameter" as const, label: "Diameter (in)", min: 2.4, max: 6, step: 0.1 },
         { id: "patternScale" as const, label: "Pattern Scale", min: 1, max: 5, step: 0.1 },
         { id: "patternDepth" as const, label: "Pattern Depth (mm)", min: 0.2, max: 2, step: 0.1 },
         { id: "twist" as const, label: "Twist (turns)", min: 0, max: 3, step: 0.1 },
       ] as const
     case 'bowl':
       return [
-        { id: "height" as const, label: "Height (cm)", min: 5, max: 12, step: 0.1 },
-        { id: "diameter" as const, label: "Diameter (cm)", min: 15, max: 30, step: 0.1 },
+        { id: "height" as const, label: "Height (in)", min: 2, max: 5, step: 0.1 },
+        { id: "diameter" as const, label: "Diameter (in)", min: 6, max: 12, step: 0.1 },
         { id: "patternScale" as const, label: "Pattern Scale", min: 1, max: 5, step: 0.1 },
         { id: "patternDepth" as const, label: "Pattern Depth (mm)", min: 0.2, max: 2, step: 0.1 },
         { id: "twist" as const, label: "Twist (turns)", min: 0, max: 3, step: 0.1 },
       ] as const
     case 'coaster':
       return [
-        { id: "diameter" as const, label: "Diameter (cm)", min: 15, max: 30, step: 0.1 },
+        { id: "diameter" as const, label: "Diameter (in)", min: 6, max: 12, step: 0.1 },
         { id: "thickness" as const, label: "Thickness (mm)", min: 3, max: 10, step: 0.1 },
         { id: "patternScale" as const, label: "Pattern Scale", min: 1, max: 5, step: 0.1 },
         { id: "patternDepth" as const, label: "Pattern Depth (mm)", min: 0.2, max: 2, step: 0.1 },
@@ -298,13 +298,15 @@ const materials: Record<string, MaterialConfig> = {
   matte: {
     type: 'standard',
     props: {
-      metalness: 0.2,
-      roughness: 0.6,
-      clearcoat: 0.5,
-      clearcoatRoughness: 0.4,
+      color: '#e0e0e0',  // Lighter grey color
+      metalness: 0.1,    // Keep low metalness for matte look
+      roughness: 0.7,    // Slightly reduced roughness for more definition
+      clearcoat: 0.3,    // Slightly increased clearcoat
+      clearcoatRoughness: 0.6,  // Reduced clearcoat roughness
       opacity: 1,
       transparent: true,
       side: DoubleSide,
+      envMapIntensity: 0.8,  // Added environment map intensity
     },
   },
   wireframe: {
@@ -392,11 +394,11 @@ function Scene({ params }: SceneProps) {
   return (
     <>
       <color attach="background" args={["#1a1a1a"]} />
-      <ambientLight intensity={0.6} />
-      <spotLight position={[10, 10, 10]} angle={0.4} penumbra={0.8} intensity={2} castShadow />
-      <spotLight position={[-10, 10, -10]} angle={0.4} penumbra={0.8} intensity={2} castShadow />
-      <spotLight position={[0, -10, 0]} angle={0.4} penumbra={0.8} intensity={0.8} castShadow />
-      <Center scale={0.7} position={[0, 2, 0]}>
+      <ambientLight intensity={0.8} />
+      <spotLight position={[10, 10, 10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
+      <spotLight position={[-10, 10, -10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
+      <spotLight position={[0, -10, 0]} angle={0.4} penumbra={0.8} intensity={1} castShadow />
+      <Center scale={0.5} position={[0, 0, 0]}>
         <ParametricShape params={shapeParams} meshRef={meshRef} />
       </Center>
       <Environment preset="studio" background={false} />
@@ -405,8 +407,18 @@ function Scene({ params }: SceneProps) {
   )
 }
 
+const inchesToCm = (inches: number) => inches * 2.54;
+
 function generateCoasterGeometry(params: CoasterShapeParams) {
-  const { diameter, thickness, patternType, patternScale, patternDepth, rimHeight } = params
+  const { 
+    diameter: diameterInches, 
+    thickness, 
+    patternType, 
+    patternScale, 
+    patternDepth, 
+    rimHeight 
+  } = params
+  const diameter = inchesToCm(diameterInches)
   const segments = 128 // Increased for smoother curves
   const vertices: number[] = []
   const indices: number[] = []
@@ -544,7 +556,19 @@ function generateCoasterGeometry(params: CoasterShapeParams) {
 }
 
 function generateStandardGeometry(params: StandardShapeParams) {
-  const { height, topRadius, bottomRadius, waveAmplitude, waveFrequency, twist, hasBottom } = params
+  const { 
+    height: heightInches, 
+    topRadius: topRadiusInches, 
+    bottomRadius: bottomRadiusInches, 
+    waveAmplitude: waveAmplitudeInches, 
+    waveFrequency, 
+    twist, 
+    hasBottom 
+  } = params
+  const height = inchesToCm(heightInches)
+  const topRadius = inchesToCm(topRadiusInches)
+  const bottomRadius = inchesToCm(bottomRadiusInches)
+  const waveAmplitude = inchesToCm(waveAmplitudeInches)
   const segments = 64
   const heightSegments = 32
   const vertices: number[] = []
@@ -617,7 +641,17 @@ function generateStandardGeometry(params: StandardShapeParams) {
 }
 
 function generateWallArtGeometry(params: WallArtParams) {
-  const { width, height, depth, patternType, patternScale, patternDepth } = params
+  const { 
+    width: widthInches, 
+    height: heightInches, 
+    depth: depthInches, 
+    patternType, 
+    patternScale, 
+    patternDepth 
+  } = params
+  const width = inchesToCm(widthInches)
+  const height = inchesToCm(heightInches)
+  const depth = inchesToCm(depthInches)
   const segments = 32
   const vertices: number[] = []
   const indices: number[] = []
@@ -761,7 +795,16 @@ function generateWallArtGeometry(params: WallArtParams) {
 }
 
 function generateCandleHolderGeometry(params: CandleHolderParams) {
-  const { height, diameter, patternType, patternScale, patternDepth, twist } = params
+  const { 
+    height: holderHeightInches, 
+    diameter: holderDiameterInches, 
+    patternType: holderPatternType, 
+    patternScale: holderPatternScale, 
+    patternDepth: holderPatternDepth, 
+    twist: holderTwist 
+  } = params
+  const holderHeight = inchesToCm(holderHeightInches)
+  const holderDiameter = inchesToCm(holderDiameterInches)
   const segments = 64
   const vertices: number[] = []
   const indices: number[] = []
@@ -770,43 +813,43 @@ function generateCandleHolderGeometry(params: CandleHolderParams) {
   // Generate vertices for the cup surface
   for (let y = 0; y <= segments; y++) {
     const v = y / segments
-    const yPos = v * height
+    const yPos = v * holderHeight
 
     // Calculate twist angle for this height
-    const twistAngle = v * twist * Math.PI * 2
+    const twistAngle = v * holderTwist * Math.PI * 2
     
     for (let theta = 0; theta <= segments; theta++) {
       const angle = (theta / segments) * Math.PI * 2 + twistAngle
       
       // Apply pattern to the surface
       let pattern = 0
-      if (yPos < height - 0.5) { // Don't apply pattern near the rim
-        switch (patternType) {
+      if (yPos < holderHeight - 0.5) { // Don't apply pattern near the rim
+        switch (holderPatternType) {
           case 'geometric':
-            pattern = Math.abs(Math.sin(theta * patternScale + v * patternScale * 8)) * patternDepth
+            pattern = Math.abs(Math.sin(theta * holderPatternScale + v * holderPatternScale * 8)) * holderPatternDepth
             break
           case 'stars':
-            pattern = Math.pow(Math.sin(theta * patternScale * 2) * Math.cos(v * patternScale * 8), 2) * patternDepth
+            pattern = Math.pow(Math.sin(theta * holderPatternScale * 2) * Math.cos(v * holderPatternScale * 8), 2) * holderPatternDepth
             break
           case 'leaves':
-            pattern = Math.sin(theta * patternScale + v * patternScale * 6) * patternDepth
+            pattern = Math.sin(theta * holderPatternScale + v * holderPatternScale * 6) * holderPatternDepth
             break
           case 'abstract':
-            pattern = (Math.sin(theta * patternScale * 3) * Math.sin(v * patternScale * 4)) * patternDepth
+            pattern = (Math.sin(theta * holderPatternScale * 3) * Math.sin(v * holderPatternScale * 4)) * holderPatternDepth
             break
         }
       }
 
       // For the last vertex in each ring, use the same coordinates as the first vertex
       const x = theta === segments ? vertices[y * (segments + 1) * 3] :
-               Math.cos(angle) * (diameter/2 + pattern)
+               Math.cos(angle) * (holderDiameter/2 + pattern)
       const z = theta === segments ? vertices[y * (segments + 1) * 3 + 2] :
-               Math.sin(angle) * (diameter/2 + pattern)
+               Math.sin(angle) * (holderDiameter/2 + pattern)
       vertices.push(x, yPos, z)
 
       // Calculate normals with twist
       const nx = Math.cos(angle)
-      const ny = twist * 0.2 + pattern * 0.1
+      const ny = holderTwist * 0.2 + pattern * 0.1
       const nz = Math.sin(angle)
       const len = Math.sqrt(nx*nx + ny*ny + nz*nz)
       normals.push(nx/len, ny/len, nz/len)
@@ -839,9 +882,9 @@ function generateCandleHolderGeometry(params: CandleHolderParams) {
     const angle = (theta / segments) * Math.PI * 2
     // For the last vertex, use the same coordinates as the first vertex
     const x = theta === segments ? vertices[bottomStartIdx * 3 + 3] :
-             Math.cos(angle) * (diameter/2)
+             Math.cos(angle) * (holderDiameter/2)
     const z = theta === segments ? vertices[bottomStartIdx * 3 + 5] :
-             Math.sin(angle) * (diameter/2)
+             Math.sin(angle) * (holderDiameter/2)
     
     vertices.push(x, bottomY, z)
     normals.push(0, -1, 0)
@@ -873,7 +916,16 @@ function generateCandleHolderGeometry(params: CandleHolderParams) {
 }
 
 function generateBowlGeometry(params: BowlParams) {
-  const { height, diameter, patternType, patternScale, patternDepth, twist } = params
+  const { 
+    height: bowlHeightInches, 
+    diameter: bowlDiameterInches, 
+    patternType: bowlPatternType, 
+    patternScale: bowlPatternScale, 
+    patternDepth: bowlPatternDepth, 
+    twist: bowlTwist 
+  } = params
+  const bowlHeight = inchesToCm(bowlHeightInches)
+  const bowlDiameter = inchesToCm(bowlDiameterInches)
   const segments = 64
   const vertices: number[] = []
   const indices: number[] = []
@@ -883,29 +935,29 @@ function generateBowlGeometry(params: BowlParams) {
   for (let y = 0; y <= segments; y++) {
     const v = y / segments
     // Modified curve for bowl shape - more curved at bottom, wider at top
-    const yPos = height * Math.pow(v, 0.7)
+    const yPos = bowlHeight * Math.pow(v, 0.7)
 
     // Calculate twist angle for this height
-    const twistAngle = v * twist * Math.PI * 2
+    const twistAngle = v * bowlTwist * Math.PI * 2
     
     for (let theta = 0; theta <= segments; theta++) {
       const angle = (theta / segments) * Math.PI * 2 + twistAngle
       
       // Apply pattern to the surface
       let pattern = 0
-      if (yPos < height - 0.5) { // Don't apply pattern near the rim
-        switch (patternType) {
+      if (yPos < bowlHeight - 0.5) { // Don't apply pattern near the rim
+        switch (bowlPatternType) {
           case 'geometric':
-            pattern = Math.abs(Math.sin(theta * patternScale + v * patternScale * 8)) * patternDepth
+            pattern = Math.abs(Math.sin(theta * bowlPatternScale + v * bowlPatternScale * 8)) * bowlPatternDepth
             break
           case 'stars':
-            pattern = Math.pow(Math.sin(theta * patternScale * 2) * Math.cos(v * patternScale * 8), 2) * patternDepth
+            pattern = Math.pow(Math.sin(theta * bowlPatternScale * 2) * Math.cos(v * bowlPatternScale * 8), 2) * bowlPatternDepth
             break
           case 'leaves':
-            pattern = Math.sin(theta * patternScale + v * patternScale * 6) * patternDepth
+            pattern = Math.sin(theta * bowlPatternScale + v * bowlPatternScale * 6) * bowlPatternDepth
             break
           case 'abstract':
-            pattern = (Math.sin(theta * patternScale * 3) * Math.sin(v * patternScale * 4)) * patternDepth
+            pattern = (Math.sin(theta * bowlPatternScale * 3) * Math.sin(v * bowlPatternScale * 4)) * bowlPatternDepth
             break
         }
       }
@@ -913,14 +965,14 @@ function generateBowlGeometry(params: BowlParams) {
       // Calculate radius with bowl curve - wider at top
       const radiusMultiplier = 1 + (v * 0.2) // Gradually increases radius towards the top
       const x = theta === segments ? vertices[y * (segments + 1) * 3] :
-               Math.cos(angle) * ((diameter/2) * radiusMultiplier + pattern)
+               Math.cos(angle) * ((bowlDiameter/2) * radiusMultiplier + pattern)
       const z = theta === segments ? vertices[y * (segments + 1) * 3 + 2] :
-               Math.sin(angle) * ((diameter/2) * radiusMultiplier + pattern)
+               Math.sin(angle) * ((bowlDiameter/2) * radiusMultiplier + pattern)
       vertices.push(x, yPos, z)
 
       // Calculate normals with twist
       const nx = Math.cos(angle)
-      const ny = twist * 0.2 + (0.3 - v * 0.2)
+      const ny = bowlTwist * 0.2 + (0.3 - v * 0.2)
       const nz = Math.sin(angle)
       const len = Math.sqrt(nx*nx + ny*ny + nz*nz)
       normals.push(nx/len, ny/len, nz/len)
@@ -953,9 +1005,9 @@ function generateBowlGeometry(params: BowlParams) {
   for (let theta = 0; theta <= segments; theta++) {
     const angle = (theta / segments) * Math.PI * 2
     const x = theta === segments ? vertices[bottomStartIdx * 3 + 3] :
-             Math.cos(angle) * (diameter/2)
+             Math.cos(angle) * (bowlDiameter/2)
     const z = theta === segments ? vertices[bottomStartIdx * 3 + 5] :
-             Math.sin(angle) * (diameter/2)
+             Math.sin(angle) * (bowlDiameter/2)
     
     vertices.push(x, bottomY, z)
     normals.push(0, -1, 0)
@@ -1138,39 +1190,17 @@ export default function Component() {
       const exportMesh = new THREE.Mesh(geometry, material)
       const stl = exporter.parse(exportMesh)
       
-      console.log('Creating checkout session...')
-      // Create checkout session with STL data in metadata
-      const response = await fetch(`/api/checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId: 'price_1QvzAQCLoBz9jXRlBYGoi3Q0',
-          mode: 'payment',
-          stlData: stl,
-          productName: currentCategory,
-          shipping_address_collection: undefined // Remove shipping address requirement
-        })
-      })
+      // Create blob and trigger download
+      const blob = new Blob([stl], { type: 'application/sla' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${currentCategory}_3d_model.stl`
+      document.body.appendChild(a)
+      a.click()
+      URL.revokeObjectURL(url)
+      document.body.removeChild(a)
       
-      const data = await response.json()
-      
-      if (!response.ok) {
-        console.error('Checkout session creation failed:', data)
-        alert(data.details || data.error || 'Failed to create checkout session. Please try again.')
-        return
-      }
-
-      console.log('Checkout session created:', data)
-      
-      if (data.url) {
-        console.log('Redirecting to checkout:', data.url)
-        window.location.href = data.url
-      } else {
-        console.error('No checkout URL returned')
-        alert('Failed to create checkout session. Please try again.')
-      }
     } catch (error) {
       console.error('Error in handleExportSTL:', error)
       alert('An error occurred while processing your request. Please try again.')
@@ -1329,7 +1359,7 @@ export default function Component() {
         <div className="flex-1 grid lg:grid-cols-[1fr_320px] gap-8">
           <div className="relative rounded-2xl overflow-hidden bg-zinc-800/50 backdrop-blur-sm border border-white/10 h-[50vh] lg:h-[600px]">
             <div className="absolute inset-0">
-              <Canvas camera={{ position: [30, 15, 30], fov: 45 }} className="w-full h-full">
+              <Canvas camera={{ position: [40, 20, 40], fov: 45 }} className="w-full h-full">
                 <Suspense fallback={null}>
                   <Scene key={key} params={{ ...shapeParams, meshRef }} />
                 </Suspense>
@@ -1492,7 +1522,7 @@ export default function Component() {
                       className="w-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2"
                     >
                       <Download className="w-4 h-4" />
-                      Download STL ($3)
+                      Download STL
                     </Button>
                   </div>
 
