@@ -1130,7 +1130,7 @@ function generateCylinderBaseGeometry(params: CylinderBaseParams) {
         pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
       }
       
-      // Apply a non-linear curve to create sharper points
+      // Apply a sharpness factor to create more distinctive points
       const sharpness = 2.5;
       pointDistance = Math.pow(pointDistance, sharpness);
       
@@ -1214,7 +1214,7 @@ function generateCylinderBaseGeometry(params: CylinderBaseParams) {
         pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
       }
       
-      // Apply a non-linear curve to create sharper points
+      // Apply a sharpness factor to create more distinctive points
       const sharpness = 2.5;
       pointDistance = Math.pow(pointDistance, sharpness);
       
@@ -1280,7 +1280,7 @@ function generateCylinderBaseGeometry(params: CylinderBaseParams) {
         pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
       }
       
-      // Apply a non-linear curve to create sharper points
+      // Apply a sharpness factor to create more distinctive points
       const sharpness = 2.5;
       pointDistance = Math.pow(pointDistance, sharpness);
       
@@ -1742,7 +1742,7 @@ export default function Component() {
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-zinc-700">
                         <SelectItem value="cylinder" className="text-white hover:bg-zinc-800">Cylinder</SelectItem>
-                        <SelectItem value="star" className="text-white hover:bg-zinc-800">Star</SelectItem>
+                        <SelectItem value="flower" className="text-white hover:bg-zinc-800">Flower</SelectItem>
                         <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
                       </SelectContent>
                     </Select>
