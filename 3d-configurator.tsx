@@ -222,6 +222,36 @@ const categories: Record<string, CategoryInfo> = {
       material: "shiny" as const,
     },
   },
+  cylinderBase: {
+    name: "Base",
+    description: "Solid bases for lamps, vases, or display stands. Simple, clean design with top and bottom closed. Choose from cylinder, star, or square shapes. For custom dimensions or special requests, use our Custom Order button.",
+    priceInfo: {
+      mini: {
+        dimensions: "2\" × 2\" × 2\"",
+        price: 25,
+        priceId: "price_1QmGnoCLoBz9jXRliwBcAA5a"
+      },
+      small: {
+        dimensions: "3.5\" × 3.5\" × 3.5\"",
+        price: 35,
+        priceId: "price_1QmGpfCLoBz9jXRlBcrkWyUj"
+      },
+      medium: {
+        dimensions: "5\" × 5\" × 5\"",
+        price: 45,
+        priceId: "price_1QmGquCLoBz9jXRlh9SG2fqs"
+      }
+    },
+    defaults: {
+      type: "cylinderBase",
+      shape: "cylinder",
+      material: "matte",
+      height: 8,
+      diameter: 10,
+      flowerPetals: 5,
+      petalPointiness: 0.8,
+    },
+  },
 } as const
 
 const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams) => {
@@ -266,6 +296,15 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
         { id: "patternScale" as const, label: "Pattern Scale", min: 1, max: 5, step: 0.1 },
         { id: "patternDepth" as const, label: "Pattern Depth (mm)", min: 0.2, max: 2, step: 0.1 },
         { id: "rimHeight" as const, label: "Rim Height (mm)", min: 0, max: 4, step: 0.1 },
+      ] as const
+    case 'cylinderBase':
+      return [
+        { id: "height" as const, label: "Height (in)", min: 2, max: 15, step: 0.1 },
+        { id: "diameter" as const, label: "Diameter (in)", min: 2, max: 12, step: 0.1 },
+        ...((shapeParams.type === 'cylinderBase' && shapeParams.shape === 'flower') ? [
+          { id: "flowerPetals" as const, label: "Flower Petals", min: 3, max: 16, step: 1 },
+          { id: "petalPointiness" as const, label: "Petal Pointiness", min: 0.2, max: 0.95, step: 0.05 },
+        ] : [])
       ] as const
   }
 }
@@ -377,7 +416,16 @@ interface BowlParams extends BaseShapeParams {
   twist: number
 }
 
-type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams
+interface CylinderBaseParams extends BaseShapeParams {
+  type: 'cylinderBase'
+  shape: 'cylinder' | 'flower' | 'square'
+  height: number
+  diameter: number
+  flowerPetals?: number   // Number of petals when shape is 'flower'
+  petalPointiness?: number  // How pointy the petals are (0-1) when shape is 'flower'
+}
+
+type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams
 
 interface ParametricShapeProps {
   params: ShapeParams
@@ -1038,6 +1086,233 @@ function generateBowlGeometry(params: BowlParams) {
   return { vertices, indices, normals }
 }
 
+function generateCylinderBaseGeometry(params: CylinderBaseParams) {
+  const { height, diameter, shape, flowerPetals, petalPointiness } = params;
+  
+  // Default values for flower parameters if not provided
+  const petals = flowerPetals || 5;
+  const pointiness = petalPointiness || 0.6;
+  
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const normals: number[] = [];
+  
+  const segments = 72;
+  const radius = diameter / 2;
+  
+  // Generate sides
+  for (let i = 0; i <= segments; i++) {
+    const theta = i / segments;
+    const u = theta / segments;
+    const angle = u * Math.PI * 2;
+    
+    // Default to cylinder shape
+    let x = Math.cos(angle) * radius;
+    let z = Math.sin(angle) * radius;
+    
+    // Calculate x and z coordinates based on shape
+    if (shape === 'flower') {
+      // Create a flower shape with sharp, distinct petals
+      const innerRadius = radius * (1 - pointiness);
+      
+      // Calculate exact position in the flower pattern
+      const anglePerPoint = (2 * Math.PI) / petals;
+      const pointAngle = Math.floor(angle / anglePerPoint) * anglePerPoint;
+      const nextPointAngle = pointAngle + anglePerPoint;
+      
+      // Calculate how far we are from a point (0 = at point, 1 = at valley)
+      let pointDistance;
+      if (angle < pointAngle + anglePerPoint / 2) {
+        // Between point and valley
+        pointDistance = (angle - pointAngle) / (anglePerPoint / 2);
+      } else {
+        // Between valley and next point
+        pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
+      }
+      
+      // Apply a non-linear curve to create sharper points
+      const sharpness = 2.5;
+      pointDistance = Math.pow(pointDistance, sharpness);
+      
+      // Interpolate between outer and inner radius
+      const currentRadius = radius - (pointDistance * (radius - innerRadius));
+      
+      x = Math.cos(angle) * currentRadius;
+      z = Math.sin(angle) * currentRadius;
+    } else if (shape === 'square') {
+      // Create a square shape
+      // This is a simple approximation - it's not a perfect square
+      const absX = Math.abs(Math.cos(angle));
+      const absZ = Math.abs(Math.sin(angle));
+      const maxVal = Math.max(absX, absZ);
+      x = (Math.cos(angle) / maxVal) * radius;
+      z = (Math.sin(angle) / maxVal) * radius;
+    }
+    
+    vertices.push(x, height / 2, z);
+    
+    // Calculate normals - simplification for non-cylinder shapes
+    let nx = Math.cos(angle);
+    let nz = Math.sin(angle);
+    
+    if (shape !== 'cylinder') {
+      // For star and square, use the direction vector from center
+      const len = Math.sqrt(x * x + z * z);
+      if (len > 0) {
+        nx = x / len;
+        nz = z / len;
+      }
+    }
+    
+    normals.push(nx, 0, nz);
+  }
+  
+  // Generate indices for the sides
+  for (let i = 0; i < segments; i++) {
+    const current = i * (segments + 1);
+    const next = current + segments + 1;
+    
+    indices.push(
+      current, next, current + 1,
+      current + 1, next, next + 1
+    );
+  }
+  
+  // Add bottom cap
+  const bottomY = 0;
+  const bottomStartIdx = vertices.length / 3;
+  
+  // Center point for bottom
+  vertices.push(0, bottomY, 0);
+  normals.push(0, -1, 0);
+  
+  // Bottom rim vertices
+  for (let theta = 0; theta <= segments; theta++) {
+    const angle = (theta / segments) * Math.PI * 2;
+    
+    // Default to cylinder shape
+    let x = Math.cos(angle) * radius;
+    let z = Math.sin(angle) * radius;
+    
+    // Calculate x and z coordinates based on shape (same as for sides)
+    if (shape === 'flower') {
+      // Create a flower shape with sharp, distinct petals
+      const innerRadius = radius * (1 - pointiness);
+      
+      // Calculate exact position in the flower pattern
+      const anglePerPoint = (2 * Math.PI) / petals;
+      const pointAngle = Math.floor(angle / anglePerPoint) * anglePerPoint;
+      const nextPointAngle = pointAngle + anglePerPoint;
+      
+      // Calculate how far we are from a point (0 = at point, 1 = at valley)
+      let pointDistance;
+      if (angle < pointAngle + anglePerPoint / 2) {
+        // Between point and valley
+        pointDistance = (angle - pointAngle) / (anglePerPoint / 2);
+      } else {
+        // Between valley and next point
+        pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
+      }
+      
+      // Apply a non-linear curve to create sharper points
+      const sharpness = 2.5;
+      pointDistance = Math.pow(pointDistance, sharpness);
+      
+      // Interpolate between outer and inner radius
+      const currentRadius = radius - (pointDistance * (radius - innerRadius));
+      
+      x = Math.cos(angle) * currentRadius;
+      z = Math.sin(angle) * currentRadius;
+    } else if (shape === 'square') {
+      const absX = Math.abs(Math.cos(angle));
+      const absZ = Math.abs(Math.sin(angle));
+      const maxVal = Math.max(absX, absZ);
+      x = (Math.cos(angle) / maxVal) * radius;
+      z = (Math.sin(angle) / maxVal) * radius;
+    }
+    
+    vertices.push(x, bottomY, z);
+    normals.push(0, -1, 0);
+  }
+  
+  // Add bottom face indices
+  for (let i = 0; i < segments; i++) {
+    indices.push(
+      bottomStartIdx,
+      bottomStartIdx + 1 + i,
+      bottomStartIdx + 2 + i
+    );
+  }
+  
+  // Add top cap to close the cylinder
+  const topY = height;
+  const topStartIdx = vertices.length / 3;
+  
+  // Center point for top
+  vertices.push(0, topY, 0);
+  normals.push(0, 1, 0);
+  
+  // Top rim vertices
+  for (let theta = 0; theta <= segments; theta++) {
+    const angle = (theta / segments) * Math.PI * 2;
+    
+    // Default to cylinder shape
+    let x = Math.cos(angle) * radius;
+    let z = Math.sin(angle) * radius;
+    
+    // Calculate x and z coordinates based on shape (same as for sides)
+    if (shape === 'flower') {
+      // Create a flower shape with sharp, distinct petals
+      const innerRadius = radius * (1 - pointiness);
+      
+      // Calculate exact position in the flower pattern
+      const anglePerPoint = (2 * Math.PI) / petals;
+      const pointAngle = Math.floor(angle / anglePerPoint) * anglePerPoint;
+      const nextPointAngle = pointAngle + anglePerPoint;
+      
+      // Calculate how far we are from a point (0 = at point, 1 = at valley)
+      let pointDistance;
+      if (angle < pointAngle + anglePerPoint / 2) {
+        // Between point and valley
+        pointDistance = (angle - pointAngle) / (anglePerPoint / 2);
+      } else {
+        // Between valley and next point
+        pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
+      }
+      
+      // Apply a non-linear curve to create sharper points
+      const sharpness = 2.5;
+      pointDistance = Math.pow(pointDistance, sharpness);
+      
+      // Interpolate between outer and inner radius
+      const currentRadius = radius - (pointDistance * (radius - innerRadius));
+      
+      x = Math.cos(angle) * currentRadius;
+      z = Math.sin(angle) * currentRadius;
+    } else if (shape === 'square') {
+      const absX = Math.abs(Math.cos(angle));
+      const absZ = Math.abs(Math.sin(angle));
+      const maxVal = Math.max(absX, absZ);
+      x = (Math.cos(angle) / maxVal) * radius;
+      z = (Math.sin(angle) / maxVal) * radius;
+    }
+    
+    vertices.push(x, topY, z);
+    normals.push(0, 1, 0);
+  }
+  
+  // Add top face indices - note the reversed winding order compared to bottom
+  for (let i = 0; i < segments; i++) {
+    indices.push(
+      topStartIdx,
+      topStartIdx + 2 + i,
+      topStartIdx + 1 + i
+    );
+  }
+  
+  return { vertices, indices, normals };
+}
+
 function ParametricShape({ params, meshRef }: ParametricShapeProps) {
   const generateGeometry = useCallback(() => {
     switch (params.type) {
@@ -1049,6 +1324,8 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
         return generateCandleHolderGeometry(params)
       case 'bowl':
         return generateBowlGeometry(params)
+      case 'cylinderBase':
+        return generateCylinderBaseGeometry(params)
       default:
         return generateStandardGeometry(params)
     }
@@ -1453,13 +1730,32 @@ export default function Component() {
                   </div>
                 )}
 
+                {shapeParams.type === 'cylinderBase' && (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Shape</Label>
+                    <Select 
+                      value={shapeParams.shape}
+                      onValueChange={(value) => updateParam("shape", value)}
+                    >
+                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="cylinder" className="text-white hover:bg-zinc-800">Cylinder</SelectItem>
+                        <SelectItem value="star" className="text-white hover:bg-zinc-800">Star</SelectItem>
+                        <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {getControlsForType(shapeParams.type, shapeParams).map((control) => (
                   <div key={control.id} className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium">{control.label}</Label>
                       <span className="text-xs text-zinc-400">
                         {typeof (shapeParams as any)[control.id] === 'number' 
-                          ? (shapeParams as any)[control.id].toFixed(control.step === 0.1 ? 1 : 0)
+                          ? ((shapeParams as any)[control.id]?.toFixed?.(control.step === 0.1 ? 1 : 0) || (shapeParams as any)[control.id])
                           : ''}
                       </span>
                     </div>
@@ -1504,7 +1800,7 @@ export default function Component() {
                   
                   <div className="flex justify-between items-center mt-4">
                     <span className="text-lg font-semibold">
-                      ${categories[currentCategory].priceInfo[selectedSize]?.price.toFixed(2)}
+                      ${categories[currentCategory].priceInfo[selectedSize]?.price?.toFixed(2) || '0.00'}
                     </span>
                     <Button
                       onClick={handleBuyNow}
