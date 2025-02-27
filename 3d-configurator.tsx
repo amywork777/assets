@@ -1100,213 +1100,119 @@ function generateCylinderBaseGeometry(params: CylinderBaseParams) {
   const segments = 72;
   const radius = diameter / 2;
   
-  // Generate sides
-  for (let i = 0; i <= segments; i++) {
-    const theta = i / segments;
-    const u = theta / segments;
-    const angle = u * Math.PI * 2;
+  // Generate sides (now we create both top and bottom rows of vertices)
+  for (let y = 0; y <= 1; y++) {
+    const yPos = y * height; // 0 or height
     
-    // Default to cylinder shape
-    let x = Math.cos(angle) * radius;
-    let z = Math.sin(angle) * radius;
-    
-    // Calculate x and z coordinates based on shape
-    if (shape === 'flower') {
-      // Create a flower shape with sharp, distinct petals
-      const innerRadius = radius * (1 - pointiness);
+    for (let i = 0; i <= segments; i++) {
+      const theta = i / segments;
+      const angle = theta * Math.PI * 2;
       
-      // Calculate exact position in the flower pattern
-      const anglePerPoint = (2 * Math.PI) / petals;
-      const pointAngle = Math.floor(angle / anglePerPoint) * anglePerPoint;
-      const nextPointAngle = pointAngle + anglePerPoint;
+      // Default to cylinder shape
+      let x = Math.cos(angle) * radius;
+      let z = Math.sin(angle) * radius;
       
-      // Calculate how far we are from a point (0 = at point, 1 = at valley)
-      let pointDistance;
-      if (angle < pointAngle + anglePerPoint / 2) {
-        // Between point and valley
-        pointDistance = (angle - pointAngle) / (anglePerPoint / 2);
-      } else {
-        // Between valley and next point
-        pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
+      // Calculate x and z coordinates based on shape
+      if (shape === 'flower') {
+        // Create a flower shape with sharp, distinct petals
+        const innerRadius = radius * (1 - pointiness);
+        
+        // Calculate exact position in the flower pattern
+        const anglePerPoint = (2 * Math.PI) / petals;
+        const pointAngle = Math.floor(angle / anglePerPoint) * anglePerPoint;
+        
+        // Calculate how far we are from a point (0 = at point, 1 = at valley)
+        let pointDistance;
+        if (angle < pointAngle + anglePerPoint / 2) {
+          // Between point and valley
+          pointDistance = (angle - pointAngle) / (anglePerPoint / 2);
+        } else {
+          // Between valley and next point
+          pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
+        }
+        
+        // Apply a sharpness factor to create more distinctive points
+        const sharpness = 2.5;
+        pointDistance = Math.pow(pointDistance, sharpness);
+        
+        // Interpolate between outer and inner radius
+        const currentRadius = radius - (pointDistance * (radius - innerRadius));
+        
+        x = Math.cos(angle) * currentRadius;
+        z = Math.sin(angle) * currentRadius;
+      } else if (shape === 'square') {
+        // Create a square shape
+        const absX = Math.abs(Math.cos(angle));
+        const absZ = Math.abs(Math.sin(angle));
+        const maxVal = Math.max(absX, absZ);
+        x = (Math.cos(angle) / maxVal) * radius;
+        z = (Math.sin(angle) / maxVal) * radius;
       }
       
-      // Apply a sharpness factor to create more distinctive points
-      const sharpness = 2.5;
-      pointDistance = Math.pow(pointDistance, sharpness);
+      vertices.push(x, yPos, z);
       
-      // Interpolate between outer and inner radius
-      const currentRadius = radius - (pointDistance * (radius - innerRadius));
+      // Calculate normals - simplification for non-cylinder shapes
+      let nx = Math.cos(angle);
+      let nz = Math.sin(angle);
       
-      x = Math.cos(angle) * currentRadius;
-      z = Math.sin(angle) * currentRadius;
-    } else if (shape === 'square') {
-      // Create a square shape
-      // This is a simple approximation - it's not a perfect square
-      const absX = Math.abs(Math.cos(angle));
-      const absZ = Math.abs(Math.sin(angle));
-      const maxVal = Math.max(absX, absZ);
-      x = (Math.cos(angle) / maxVal) * radius;
-      z = (Math.sin(angle) / maxVal) * radius;
-    }
-    
-    vertices.push(x, height / 2, z);
-    
-    // Calculate normals - simplification for non-cylinder shapes
-    let nx = Math.cos(angle);
-    let nz = Math.sin(angle);
-    
-    if (shape !== 'cylinder') {
-      // For star and square, use the direction vector from center
-      const len = Math.sqrt(x * x + z * z);
-      if (len > 0) {
-        nx = x / len;
-        nz = z / len;
+      if (shape !== 'cylinder') {
+        // For flower and square, use the direction vector from center
+        const len = Math.sqrt(x * x + z * z);
+        if (len > 0) {
+          nx = x / len;
+          nz = z / len;
+        }
       }
+      
+      normals.push(nx, 0, nz);
     }
-    
-    normals.push(nx, 0, nz);
   }
   
   // Generate indices for the sides
   for (let i = 0; i < segments; i++) {
-    const current = i * (segments + 1);
-    const next = current + segments + 1;
+    const bottomLeft = i;
+    const bottomRight = i + 1;
+    const topLeft = i + segments + 1;
+    const topRight = i + segments + 2;
     
     indices.push(
-      current, next, current + 1,
-      current + 1, next, next + 1
+      bottomLeft, topLeft, bottomRight,
+      bottomRight, topLeft, topRight
     );
   }
   
   // Add bottom cap
-  const bottomY = 0;
-  const bottomStartIdx = vertices.length / 3;
+  const bottomCenterIdx = vertices.length / 3;
   
   // Center point for bottom
-  vertices.push(0, bottomY, 0);
+  vertices.push(0, 0, 0);
   normals.push(0, -1, 0);
   
-  // Bottom rim vertices
-  for (let theta = 0; theta <= segments; theta++) {
-    const angle = (theta / segments) * Math.PI * 2;
-    
-    // Default to cylinder shape
-    let x = Math.cos(angle) * radius;
-    let z = Math.sin(angle) * radius;
-    
-    // Calculate x and z coordinates based on shape (same as for sides)
-    if (shape === 'flower') {
-      // Create a flower shape with sharp, distinct petals
-      const innerRadius = radius * (1 - pointiness);
-      
-      // Calculate exact position in the flower pattern
-      const anglePerPoint = (2 * Math.PI) / petals;
-      const pointAngle = Math.floor(angle / anglePerPoint) * anglePerPoint;
-      const nextPointAngle = pointAngle + anglePerPoint;
-      
-      // Calculate how far we are from a point (0 = at point, 1 = at valley)
-      let pointDistance;
-      if (angle < pointAngle + anglePerPoint / 2) {
-        // Between point and valley
-        pointDistance = (angle - pointAngle) / (anglePerPoint / 2);
-      } else {
-        // Between valley and next point
-        pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
-      }
-      
-      // Apply a sharpness factor to create more distinctive points
-      const sharpness = 2.5;
-      pointDistance = Math.pow(pointDistance, sharpness);
-      
-      // Interpolate between outer and inner radius
-      const currentRadius = radius - (pointDistance * (radius - innerRadius));
-      
-      x = Math.cos(angle) * currentRadius;
-      z = Math.sin(angle) * currentRadius;
-    } else if (shape === 'square') {
-      const absX = Math.abs(Math.cos(angle));
-      const absZ = Math.abs(Math.sin(angle));
-      const maxVal = Math.max(absX, absZ);
-      x = (Math.cos(angle) / maxVal) * radius;
-      z = (Math.sin(angle) / maxVal) * radius;
-    }
-    
-    vertices.push(x, bottomY, z);
-    normals.push(0, -1, 0);
-  }
-  
-  // Add bottom face indices
+  // Bottom rim vertices are already created in the sides loop
+  // We just need to create the triangles connecting to the center
   for (let i = 0; i < segments; i++) {
     indices.push(
-      bottomStartIdx,
-      bottomStartIdx + 1 + i,
-      bottomStartIdx + 2 + i
+      bottomCenterIdx,
+      i + 1,
+      i
     );
   }
   
-  // Add top cap to close the cylinder
-  const topY = height;
-  const topStartIdx = vertices.length / 3;
+  // Add top cap
+  const topCenterIdx = vertices.length / 3;
   
   // Center point for top
-  vertices.push(0, topY, 0);
+  vertices.push(0, height, 0);
   normals.push(0, 1, 0);
   
-  // Top rim vertices
-  for (let theta = 0; theta <= segments; theta++) {
-    const angle = (theta / segments) * Math.PI * 2;
-    
-    // Default to cylinder shape
-    let x = Math.cos(angle) * radius;
-    let z = Math.sin(angle) * radius;
-    
-    // Calculate x and z coordinates based on shape (same as for sides)
-    if (shape === 'flower') {
-      // Create a flower shape with sharp, distinct petals
-      const innerRadius = radius * (1 - pointiness);
-      
-      // Calculate exact position in the flower pattern
-      const anglePerPoint = (2 * Math.PI) / petals;
-      const pointAngle = Math.floor(angle / anglePerPoint) * anglePerPoint;
-      const nextPointAngle = pointAngle + anglePerPoint;
-      
-      // Calculate how far we are from a point (0 = at point, 1 = at valley)
-      let pointDistance;
-      if (angle < pointAngle + anglePerPoint / 2) {
-        // Between point and valley
-        pointDistance = (angle - pointAngle) / (anglePerPoint / 2);
-      } else {
-        // Between valley and next point
-        pointDistance = 1 - ((angle - (pointAngle + anglePerPoint / 2)) / (anglePerPoint / 2));
-      }
-      
-      // Apply a sharpness factor to create more distinctive points
-      const sharpness = 2.5;
-      pointDistance = Math.pow(pointDistance, sharpness);
-      
-      // Interpolate between outer and inner radius
-      const currentRadius = radius - (pointDistance * (radius - innerRadius));
-      
-      x = Math.cos(angle) * currentRadius;
-      z = Math.sin(angle) * currentRadius;
-    } else if (shape === 'square') {
-      const absX = Math.abs(Math.cos(angle));
-      const absZ = Math.abs(Math.sin(angle));
-      const maxVal = Math.max(absX, absZ);
-      x = (Math.cos(angle) / maxVal) * radius;
-      z = (Math.sin(angle) / maxVal) * radius;
-    }
-    
-    vertices.push(x, topY, z);
-    normals.push(0, 1, 0);
-  }
-  
-  // Add top face indices - note the reversed winding order compared to bottom
+  // Top rim vertices are already created in the sides loop
+  // Create triangles connecting to the center
+  const topRowStart = segments + 1;
   for (let i = 0; i < segments; i++) {
     indices.push(
-      topStartIdx,
-      topStartIdx + 2 + i,
-      topStartIdx + 1 + i
+      topCenterIdx,
+      topRowStart + i,
+      topRowStart + i + 1
     );
   }
   
