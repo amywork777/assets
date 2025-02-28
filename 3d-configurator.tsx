@@ -1991,66 +1991,14 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
   const indices: number[] = [];
   const normals: number[] = [];
   
-  // Add base (bottom)
+  // Base Y position
   const bottomY = 0;
+  const topY = bottomY + height;
   
-  if (hasBottom) {
-    // OUTER BOTTOM FACE (new code)
-    // Center vertex for the outer bottom face
-    const outerBottomCenterIndex = vertices.length / 3;
-    vertices.push(0, bottomY, 0);
-    normals.push(0, -1, 0);
-    
-    // Outer bottom vertices - circle or square
-    const outerBottomStartIndex = vertices.length / 3;
-    for (let i = 0; i <= radialSegments; i++) {
-      const theta = (i / radialSegments) * Math.PI * 2;
-      let x, z;
-      
-      if (shape === 'circle') {
-        x = diameter / 2 * Math.cos(theta);
-        z = diameter / 2 * Math.sin(theta);
-      } else {
-        // For square, calculate the x,z coordinates of the corners and edges
-        const segmentPos = i % radialSegments;
-        const halfWidth = diameter / 2;
-        
-        if (segmentPos === 0) {
-          x = halfWidth;
-          z = halfWidth;
-        } else if (segmentPos === 1) {
-          x = -halfWidth;
-          z = halfWidth;
-        } else if (segmentPos === 2) {
-          x = -halfWidth;
-          z = -halfWidth;
-        } else if (segmentPos === 3) {
-          x = halfWidth;
-          z = -halfWidth;
-        } else {
-          x = halfWidth;
-          z = halfWidth;
-        }
-      }
-      
-      vertices.push(x, bottomY, z);
-      normals.push(0, -1, 0);
-    }
-    
-    // Outer bottom indices (triangles from center to edge)
-    for (let i = 0; i < radialSegments; i++) {
-      indices.push(
-        outerBottomCenterIndex, // Center
-        outerBottomStartIndex + i, // Current point
-        outerBottomStartIndex + (i + 1) % radialSegments // Next point
-      );
-    }
-  }
+  // STEP 1: CREATE OUTER WALL VERTICES
+  // First create all the vertices for the outer wall
+  const outerWallStartIndex = vertices.length / 3;
   
-  // Side walls
-  const baseVertexCount = vertices.length / 3;
-  
-  // Generate vertices for outer wall
   for (let y = 0; y <= heightSegments; y++) {
     const yPos = bottomY + (y / heightSegments) * height;
     
@@ -2103,159 +2051,167 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
       // Add outer vertex
       vertices.push(outerX, yPos, outerZ);
       normals.push(nx, 0, nz);
+    }
+  }
+  
+  // STEP 2: CREATE INNER WALL VERTICES
+  // Now create all the vertices for the inner wall
+  const innerWallStartIndex = vertices.length / 3;
+  
+  for (let y = 0; y <= heightSegments; y++) {
+    const yPos = bottomY + (y / heightSegments) * height;
+    
+    for (let i = 0; i <= radialSegments; i++) {
+      let innerX, innerZ, nx, nz;
       
-      // Inner wall vertex
-      let innerX, innerZ;
       if (shape === 'circle') {
         const theta = (i / radialSegments) * Math.PI * 2;
+        
+        // Inner wall vertex - circle
         innerX = innerDiameter / 2 * Math.cos(theta);
         innerZ = innerDiameter / 2 * Math.sin(theta);
+        
+        // Normal pointing inward
+        nx = -Math.cos(theta);
+        nz = -Math.sin(theta);
       } else {
+        // For square, calculate the x,z coordinates of the corners and edges
         const segmentPos = i % radialSegments;
-        const innerHalfWidth = (diameter - 2 * wallThickness) / 2;
+        const innerHalfWidth = innerDiameter / 2;
         
         if (segmentPos === 0) {
           innerX = innerHalfWidth;
           innerZ = innerHalfWidth;
+          nx = -1 / Math.sqrt(2);  // Normalize for corner, pointing inward
+          nz = -1 / Math.sqrt(2);
         } else if (segmentPos === 1) {
           innerX = -innerHalfWidth;
           innerZ = innerHalfWidth;
+          nx = 1 / Math.sqrt(2);
+          nz = -1 / Math.sqrt(2);
         } else if (segmentPos === 2) {
           innerX = -innerHalfWidth;
           innerZ = -innerHalfWidth;
+          nx = 1 / Math.sqrt(2);
+          nz = 1 / Math.sqrt(2);
         } else if (segmentPos === 3) {
           innerX = innerHalfWidth;
           innerZ = -innerHalfWidth;
+          nx = -1 / Math.sqrt(2);
+          nz = 1 / Math.sqrt(2);
         } else {
           innerX = innerHalfWidth;
           innerZ = innerHalfWidth;
+          nx = -1 / Math.sqrt(2);
+          nz = -1 / Math.sqrt(2);
         }
       }
       
+      // Add inner vertex
       vertices.push(innerX, yPos, innerZ);
-      
-      // Normal pointing inward
-      normals.push(-nx, 0, -nz);
+      normals.push(nx, 0, nz);
     }
   }
   
-  // Create indices for the side walls
-  const verticesPerRow = (radialSegments + 1) * 2;
+  // STEP 3: CREATE INDICES FOR OUTER WALL
+  const outerVerticesPerRow = radialSegments + 1;
   
   for (let y = 0; y < heightSegments; y++) {
     for (let i = 0; i < radialSegments; i++) {
-      const current = baseVertexCount + y * verticesPerRow + i * 2;
-      const next = baseVertexCount + y * verticesPerRow + ((i + 1) % (radialSegments + 1)) * 2;
-      const currentTop = current + verticesPerRow;
-      const nextTop = next + verticesPerRow;
+      const current = outerWallStartIndex + y * outerVerticesPerRow + i;
+      const next = outerWallStartIndex + y * outerVerticesPerRow + (i + 1) % outerVerticesPerRow;
+      const currentTop = current + outerVerticesPerRow;
+      const nextTop = next + outerVerticesPerRow;
       
-      // Outer wall (two triangles per quad)
-      indices.push(
-        current, currentTop, next,
-        next, currentTop, nextTop
-      );
-      
-      // Inner wall (two triangles per quad, reversed winding)
-      indices.push(
-        current + 1, next + 1, currentTop + 1,
-        currentTop + 1, next + 1, nextTop + 1
-      );
+      // Add two triangles to form a quad for the outer wall
+      indices.push(current, currentTop, next);
+      indices.push(next, currentTop, nextTop);
     }
   }
   
-  // Add top rim (just the top edge, not the full top surface)
-  const topY = bottomY + height;
+  // STEP 4: CREATE INDICES FOR INNER WALL
+  const innerVerticesPerRow = radialSegments + 1;
   
+  for (let y = 0; y < heightSegments; y++) {
+    for (let i = 0; i < radialSegments; i++) {
+      const current = innerWallStartIndex + y * innerVerticesPerRow + i;
+      const next = innerWallStartIndex + y * innerVerticesPerRow + (i + 1) % innerVerticesPerRow;
+      const currentTop = current + innerVerticesPerRow;
+      const nextTop = next + innerVerticesPerRow;
+      
+      // Add two triangles to form a quad for the inner wall (note reversed order for proper normals)
+      indices.push(current, next, currentTop);
+      indices.push(next, nextTop, currentTop);
+    }
+  }
+  
+  // STEP 5: CREATE TOP RIM (connecting inner and outer top edges)
   for (let i = 0; i < radialSegments; i++) {
-    const current = baseVertexCount + heightSegments * verticesPerRow + i * 2;
-    const next = baseVertexCount + heightSegments * verticesPerRow + ((i + 1) % (radialSegments + 1)) * 2;
+    const outerCurrent = outerWallStartIndex + heightSegments * outerVerticesPerRow + i;
+    const outerNext = outerWallStartIndex + heightSegments * outerVerticesPerRow + (i + 1) % radialSegments;
+    const innerCurrent = innerWallStartIndex + heightSegments * innerVerticesPerRow + i;
+    const innerNext = innerWallStartIndex + heightSegments * innerVerticesPerRow + (i + 1) % radialSegments;
     
-    // Connect outer and inner wall at the top
-    indices.push(
-      current, next, current + 1,
-      current + 1, next, next + 1
-    );
+    // Add two triangles to form a quad for the top rim
+    indices.push(outerCurrent, outerNext, innerNext);
+    indices.push(outerCurrent, innerNext, innerCurrent);
   }
   
-  // Connect inner and outer bottom at the bottom edge when hasBottom is true
+  // STEP 6: ADD BOTTOM IF SPECIFIED
   if (hasBottom) {
-    // BOTTOM EDGE CONNECTION (new code)
-    // Connect the inner and outer walls at the bottom
+    // STEP 6.1: ADD BOTTOM RIM (connecting inner and outer bottom edges)
     for (let i = 0; i < radialSegments; i++) {
-      const outerCurrent = baseVertexCount + i * 2;
-      const outerNext = baseVertexCount + ((i + 1) % radialSegments) * 2;
-      const innerCurrent = outerCurrent + 1;
-      const innerNext = outerNext + 1;
+      const outerCurrent = outerWallStartIndex + i;
+      const outerNext = outerWallStartIndex + (i + 1) % radialSegments;
+      const innerCurrent = innerWallStartIndex + i;
+      const innerNext = innerWallStartIndex + (i + 1) % radialSegments;
       
-      // Create a face connecting the inner and outer walls at the bottom
-      indices.push(
-        innerCurrent, outerCurrent, innerNext,
-        innerNext, outerCurrent, outerNext
-      );
+      // Add two triangles to form a quad for the bottom rim (note reversed winding order)
+      indices.push(outerCurrent, innerNext, outerNext);
+      indices.push(outerCurrent, innerCurrent, innerNext);
     }
     
-    // Add inner bottom surface for a watertight model
-    // This creates the "floor" of the pencil holder
-    const floorCenterIndex = vertices.length / 3;
-    vertices.push(0, bottomY, 0);  // Center point of the floor
-    normals.push(0, 1, 0);  // Normal points up for inner floor
+    // STEP 6.2: CREATE OUTER BOTTOM FACE
+    // Add center vertex for outer bottom
+    const outerBottomCenterIndex = vertices.length / 3;
+    vertices.push(0, bottomY, 0);
+    normals.push(0, -1, 0); // Normal pointing down
     
-    // Inner floor vertices follow the inner wall profile
-    const floorBaseIndex = vertices.length / 3;
-    for (let i = 0; i <= radialSegments; i++) {
-      let innerX, innerZ;
-      if (shape === 'circle') {
-        const theta = (i / radialSegments) * Math.PI * 2;
-        innerX = innerDiameter / 2 * Math.cos(theta);
-        innerZ = innerDiameter / 2 * Math.sin(theta);
-      } else {
-        const segmentPos = i % radialSegments;
-        const innerHalfWidth = (diameter - 2 * wallThickness) / 2;
-        
-        if (segmentPos === 0) {
-          innerX = innerHalfWidth;
-          innerZ = innerHalfWidth;
-        } else if (segmentPos === 1) {
-          innerX = -innerHalfWidth;
-          innerZ = innerHalfWidth;
-        } else if (segmentPos === 2) {
-          innerX = -innerHalfWidth;
-          innerZ = -innerHalfWidth;
-        } else if (segmentPos === 3) {
-          innerX = innerHalfWidth;
-          innerZ = -innerHalfWidth;
-        } else {
-          innerX = innerHalfWidth;
-          innerZ = innerHalfWidth;
-        }
-      }
+    // Create triangles from center to each vertex on the outer bottom edge
+    for (let i = 0; i < radialSegments; i++) {
+      const current = outerWallStartIndex + i;
+      const next = outerWallStartIndex + (i + 1) % radialSegments;
       
-      vertices.push(innerX, bottomY, innerZ);
-      normals.push(0, 1, 0);  // Normal points up for inner floor
+      indices.push(outerBottomCenterIndex, next, current);
     }
     
-    // Inner floor indices (triangles radiating from center)
+    // STEP 6.3: CREATE INNER BOTTOM FACE
+    // Add center vertex for inner bottom
+    const innerBottomCenterIndex = vertices.length / 3;
+    vertices.push(0, bottomY, 0);
+    normals.push(0, 1, 0); // Normal pointing up
+    
+    // Create triangles from center to each vertex on the inner bottom edge
     for (let i = 0; i < radialSegments; i++) {
-      indices.push(
-        floorCenterIndex,
-        floorBaseIndex + i,
-        floorBaseIndex + (i + 1) % (radialSegments + 1)
-      );
+      const current = innerWallStartIndex + i;
+      const next = innerWallStartIndex + (i + 1) % radialSegments;
+      
+      indices.push(innerBottomCenterIndex, current, next);
     }
   }
   
-  // Add dividers based on the divider type
+  // STEP 7: ADD DIVIDERS
   if (dividerType !== 'none') {
     const dividerThickness = wallThickness / 2;
     
     if (dividerType === 'single') {
       // Single divider down the middle
-      addDivider(-innerDiameter/2, 0, innerDiameter/2, 0, dividerThickness, height, bottomY);
+      addDivider(-innerDiameter/2, 0, innerDiameter/2, 0, dividerThickness, height, bottomY, hasBottom);
     } 
     else if (dividerType === 'cross') {
       // Cross divider (two perpendicular dividers)
-      addDivider(-innerDiameter/2, 0, innerDiameter/2, 0, dividerThickness, height, bottomY);
-      addDivider(0, -innerDiameter/2, 0, innerDiameter/2, dividerThickness, height, bottomY);
+      addDivider(-innerDiameter/2, 0, innerDiameter/2, 0, dividerThickness, height, bottomY, hasBottom);
+      addDivider(0, -innerDiameter/2, 0, innerDiameter/2, dividerThickness, height, bottomY, hasBottom);
     }
     else if (dividerType === 'grid') {
       // Grid divider with configurable number of cells
@@ -2264,19 +2220,19 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
       // Horizontal dividers - span the full width
       for (let i = 1; i < dividerCount; i++) {
         const zOffset = -innerDiameter/2 + i * cellSize;
-        addDivider(-innerDiameter/2, zOffset, innerDiameter/2, zOffset, dividerThickness, height, bottomY);
+        addDivider(-innerDiameter/2, zOffset, innerDiameter/2, zOffset, dividerThickness, height, bottomY, hasBottom);
       }
       
       // Vertical dividers - span the full height
       for (let i = 1; i < dividerCount; i++) {
         const xOffset = -innerDiameter/2 + i * cellSize;
-        addDivider(xOffset, -innerDiameter/2, xOffset, innerDiameter/2, dividerThickness, height, bottomY);
+        addDivider(xOffset, -innerDiameter/2, xOffset, innerDiameter/2, dividerThickness, height, bottomY, hasBottom);
       }
     }
   }
   
   // Helper function to add a divider
-  function addDivider(x1: number, z1: number, x2: number, z2: number, thickness: number, height: number, bottomY: number) {
+  function addDivider(x1: number, z1: number, x2: number, z2: number, thickness: number, height: number, bottomY: number, hasBottom: boolean) {
     // Starting indices for the new vertices
     const startIdx = vertices.length / 3;
     
@@ -2315,7 +2271,7 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
       normals.push(perpX, 0, perpZ); // Front face normal
     }
     for (let i = 0; i < 4; i++) {
-      normals.push(-perpX, 0, -perpZ); // Back face normal
+      normals.push(perpX, 0, perpZ); // Top face normals same as front
     }
     
     // Add indices for the 6 faces of the divider (2 triangles per face)
@@ -2331,9 +2287,11 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
     indices.push(startIdx + 4, startIdx + 5, startIdx + 6);
     indices.push(startIdx + 4, startIdx + 6, startIdx + 7);
     
-    // Bottom face
-    indices.push(startIdx + 0, startIdx + 3, startIdx + 2);
-    indices.push(startIdx + 0, startIdx + 2, startIdx + 1);
+    // Bottom face (only add if the pencil holder has a bottom)
+    if (hasBottom) {
+      indices.push(startIdx + 0, startIdx + 3, startIdx + 2);
+      indices.push(startIdx + 0, startIdx + 2, startIdx + 1);
+    }
     
     // Left end
     indices.push(startIdx + 0, startIdx + 1, startIdx + 5);
