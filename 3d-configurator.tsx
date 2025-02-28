@@ -252,6 +252,34 @@ const categories: Record<string, CategoryInfo> = {
       petalPointiness: 0.8,
     },
   },
+  phoneHolder: {
+    name: "Phone Holder",
+    description: "A customizable phone holder for your desk.",
+    priceInfo: {
+      small: {
+        dimensions: "4 x 4 x 5 in",
+        price: 18.99,
+        priceId: "price_1Ot41TI0wQgEQ20bwwJFuJZt"
+      },
+      medium: {
+        dimensions: "5 x 5 x 6 in",
+        price: 24.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'phoneHolder',
+      material: 'shiny',
+      baseWidth: 4,
+      baseDepth: 4,
+      height: 5,
+      angle: 60,
+      phoneThickness: 0.5,
+      lipHeight: 0.75,
+      cableOpening: true,
+      standThickness: 0.8, // Default thickness of 0.8 inches (thicker than before)
+    }
+  },
 } as const
 
 const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams) => {
@@ -305,6 +333,16 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
           { id: "flowerPetals" as const, label: "Flower Petals", min: 3, max: 16, step: 1 },
           { id: "petalPointiness" as const, label: "Petal Pointiness", min: 0.2, max: 0.95, step: 0.05 },
         ] : [])
+      ] as const
+    case 'phoneHolder':
+      return [
+        { id: "baseWidth" as const, label: "Base Width (in)", min: 6, max: 15, step: 0.1 },
+        { id: "baseDepth" as const, label: "Base Depth (in)", min: 6, max: 12, step: 0.1 },
+        { id: "height" as const, label: "Height (in)", min: 3, max: 10, step: 0.1 },
+        { id: "angle" as const, label: "Angle (degrees)", min: 45, max: 85, step: 1 },
+        { id: "phoneThickness" as const, label: "Phone Slot Width (in)", min: 0.3, max: 1.5, step: 0.05 },
+        { id: "lipHeight" as const, label: "Lip Height (in)", min: 0.5, max: 2.5, step: 0.1 },
+        { id: "standThickness" as const, label: "Stand Thickness (in)", min: 0.4, max: 2.0, step: 0.1 }
       ] as const
   }
 }
@@ -425,7 +463,19 @@ interface CylinderBaseParams extends BaseShapeParams {
   petalPointiness?: number  // How pointy the petals are (0-1) when shape is 'flower'
 }
 
-type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams
+interface PhoneHolderParams extends BaseShapeParams {
+  type: 'phoneHolder';
+  baseWidth: number;
+  baseDepth: number;
+  height: number;
+  angle: number;
+  phoneThickness: number;
+  lipHeight: number;
+  cableOpening: boolean;
+  standThickness: number; // New parameter for controlling the angled part thickness
+}
+
+type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams
 
 interface ParametricShapeProps {
   params: ShapeParams
@@ -1219,6 +1269,458 @@ function generateCylinderBaseGeometry(params: CylinderBaseParams) {
   return { vertices, indices, normals };
 }
 
+function generatePhoneHolderGeometry(params: PhoneHolderParams) {
+  const {
+    baseWidth: baseWidthInches,
+    baseDepth: baseDepthInches,
+    height: heightInches,
+    angle,
+    phoneThickness: phoneThicknessInches,
+    lipHeight: lipHeightInches,
+    cableOpening,
+    standThickness: standThicknessInches // Use the new parameter
+  } = params;
+  
+  // Convert to cm
+  const baseWidth = inchesToCm(baseWidthInches);
+  const baseDepth = inchesToCm(baseDepthInches);
+  const height = inchesToCm(heightInches);
+  const phoneThickness = inchesToCm(phoneThicknessInches);
+  const lipHeight = inchesToCm(lipHeightInches);
+  const standThickness = inchesToCm(standThicknessInches); // Convert to cm
+  
+  // Calculate dimensions
+  const baseThickness = 1.5; // cm - thickness of the base
+  const standWidth = baseWidth * 0.8; // 80% of base width
+  const standHeight = height;
+  const lipWidth = standWidth;
+  
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const normals: number[] = [];
+  
+  // --- BASE ---
+  // Define the base - a solid rectangular prism
+  // Base vertices - bottom face
+  vertices.push(
+    -baseWidth/2, 0, -baseDepth/2,  // 0: bottom left back
+    baseWidth/2, 0, -baseDepth/2,   // 1: bottom right back
+    baseWidth/2, 0, baseDepth/2,    // 2: bottom right front
+    -baseWidth/2, 0, baseDepth/2    // 3: bottom left front
+  );
+  
+  // Base normals - all pointing down
+  for (let i = 0; i < 4; i++) {
+    normals.push(0, -1, 0);
+  }
+  
+  // Base top face vertices
+  vertices.push(
+    -baseWidth/2, baseThickness, -baseDepth/2,  // 4: top left back
+    baseWidth/2, baseThickness, -baseDepth/2,   // 5: top right back
+    baseWidth/2, baseThickness, baseDepth/2,    // 6: top right front
+    -baseWidth/2, baseThickness, baseDepth/2    // 7: top left front
+  );
+  
+  // Base top normals - all pointing up
+  for (let i = 0; i < 4; i++) {
+    normals.push(0, 1, 0);
+  }
+  
+  // Base indices - connect bottom and top faces, creating a closed mesh
+  indices.push(
+    // Bottom face
+    0, 1, 2,
+    0, 2, 3,
+    
+    // Top face
+    4, 6, 5,
+    4, 7, 6,
+    
+    // Side faces - ensure all sides are closed
+    0, 4, 1, // back-left to back-right (bottom to top)
+    1, 4, 5,
+    
+    1, 5, 2, // back-right to front-right
+    2, 5, 6,
+    
+    2, 6, 3, // front-right to front-left
+    3, 6, 7,
+    
+    3, 7, 0, // front-left to back-left
+    0, 7, 4
+  );
+  
+  // --- ANGLED STAND ---
+  // Create an angled back panel for the phone support with specified thickness
+  const radianAngle = (angle * Math.PI) / 180;
+  const standStartIndex = vertices.length / 3;
+  
+  // Base of the stand at the back of the base
+  const standBaseZ = -baseDepth/4;
+  
+  // Calculate stand height based on angle
+  const standTopY = baseThickness + standHeight;
+  const standTopZ = standBaseZ - standHeight / Math.tan(radianAngle);
+  
+  // Create the front face of the stand
+  vertices.push(
+    -standWidth/2, baseThickness, standBaseZ,                // 0: Bottom left
+    standWidth/2, baseThickness, standBaseZ,                 // 1: Bottom right
+    -standWidth/2, standTopY, standTopZ,                     // 2: Top left
+    standWidth/2, standTopY, standTopZ                       // 3: Top right
+  );
+  
+  // Normal pointing outward from the angled panel (front face)
+  const nx = 0;
+  const ny = Math.sin(radianAngle);
+  const nz = -Math.cos(radianAngle);
+  
+  for (let i = 0; i < 4; i++) {
+    normals.push(nx, ny, nz);
+  }
+  
+  // Create back face of the stand with controllable thickness
+  // Calculate offset for back face based on standThickness and angle
+  const backOffsetY = -standThickness * Math.sin(radianAngle);
+  const backOffsetZ = -standThickness * Math.cos(radianAngle);
+  
+  // Back face vertices
+  vertices.push(
+    -standWidth/2, baseThickness + backOffsetY, standBaseZ + backOffsetZ,    // 4: Bottom left
+    standWidth/2, baseThickness + backOffsetY, standBaseZ + backOffsetZ,     // 5: Bottom right
+    -standWidth/2, standTopY + backOffsetY, standTopZ + backOffsetZ,         // 6: Top left
+    standWidth/2, standTopY + backOffsetY, standTopZ + backOffsetZ           // 7: Top right
+  );
+  
+  // Back face normal - opposite to front face
+  for (let i = 0; i < 4; i++) {
+    normals.push(-nx, -ny, -nz);
+  }
+  
+  // Connect all faces of the stand to create a watertight volume
+  indices.push(
+    // Front face
+    standStartIndex, standStartIndex + 2, standStartIndex + 1,
+    standStartIndex + 1, standStartIndex + 2, standStartIndex + 3,
+    
+    // Back face
+    standStartIndex + 4, standStartIndex + 5, standStartIndex + 6,
+    standStartIndex + 5, standStartIndex + 7, standStartIndex + 6,
+    
+    // Left edge (side face)
+    standStartIndex, standStartIndex + 4, standStartIndex + 2,
+    standStartIndex + 2, standStartIndex + 4, standStartIndex + 6,
+    
+    // Right edge (side face)
+    standStartIndex + 1, standStartIndex + 3, standStartIndex + 5,
+    standStartIndex + 3, standStartIndex + 7, standStartIndex + 5,
+    
+    // Bottom edge (connecting to base)
+    standStartIndex, standStartIndex + 1, standStartIndex + 4,
+    standStartIndex + 1, standStartIndex + 5, standStartIndex + 4,
+    
+    // Top edge
+    standStartIndex + 2, standStartIndex + 6, standStartIndex + 3,
+    standStartIndex + 3, standStartIndex + 6, standStartIndex + 7
+  );
+  
+  // --- PHONE LIP ---
+  // Position the lip forward from the center
+  const lipZ = baseDepth/3;
+  
+  // Calculate dimensions for the cable opening
+  const openingWidth = lipWidth * 0.6; // 60% of lip width
+  const openingHeight = lipHeight * 0.7; // 70% of lip height
+  const leftEdge = -openingWidth/2;
+  const rightEdge = openingWidth/2;
+  const bottomEdge = baseThickness;
+  const topEdge = baseThickness + openingHeight;
+  const frontZ = lipZ;
+  const backZ = lipZ - phoneThickness;
+  
+  // Create the lip based on whether cable opening is enabled
+  if (cableOpening) {
+    // With cable opening - Create a lip with a hole but ensure it's watertight
+    const lipStartIndex = vertices.length / 3;
+    
+    // 1. Left section of the lip (left of the opening)
+    // Front face vertices
+    vertices.push(
+      -lipWidth/2, baseThickness, frontZ,                  // 0: Bottom-left outer
+      leftEdge, baseThickness, frontZ,                     // 1: Bottom-right inner
+      -lipWidth/2, baseThickness + lipHeight, frontZ,      // 2: Top-left outer
+      leftEdge, topEdge, frontZ                            // 3: Top-right inner
+    );
+    
+    // Back face vertices (directly behind front face)
+    vertices.push(
+      -lipWidth/2, baseThickness, backZ,                   // 4: Bottom-left outer
+      leftEdge, baseThickness, backZ,                      // 5: Bottom-right inner
+      -lipWidth/2, baseThickness + lipHeight, backZ,       // 6: Top-left outer
+      leftEdge, topEdge, backZ                             // 7: Top-right inner
+    );
+    
+    // Add normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, 1);  // Front face normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, -1); // Back face normals
+    
+    // Add indices for left section
+    indices.push(
+      // Front face
+      lipStartIndex, lipStartIndex + 1, lipStartIndex + 2,
+      lipStartIndex + 1, lipStartIndex + 3, lipStartIndex + 2,
+      
+      // Back face
+      lipStartIndex + 4, lipStartIndex + 6, lipStartIndex + 5,
+      lipStartIndex + 5, lipStartIndex + 6, lipStartIndex + 7,
+      
+      // Outer left edge
+      lipStartIndex, lipStartIndex + 4, lipStartIndex + 2,
+      lipStartIndex + 2, lipStartIndex + 4, lipStartIndex + 6,
+      
+      // Inner left edge (facing the hole)
+      lipStartIndex + 1, lipStartIndex + 3, lipStartIndex + 5,
+      lipStartIndex + 3, lipStartIndex + 7, lipStartIndex + 5,
+      
+      // Bottom edge
+      lipStartIndex, lipStartIndex + 1, lipStartIndex + 4,
+      lipStartIndex + 1, lipStartIndex + 5, lipStartIndex + 4,
+      
+      // Top edge
+      lipStartIndex + 2, lipStartIndex + 3, lipStartIndex + 6,
+      lipStartIndex + 3, lipStartIndex + 7, lipStartIndex + 6
+    );
+    
+    // 2. Right section of the lip (right of the opening)
+    const rightSectionIndex = vertices.length / 3;
+    
+    // Front face vertices
+    vertices.push(
+      rightEdge, baseThickness, frontZ,                    // 0: Bottom-left inner
+      lipWidth/2, baseThickness, frontZ,                   // 1: Bottom-right outer
+      rightEdge, topEdge, frontZ,                          // 2: Top-left inner
+      lipWidth/2, baseThickness + lipHeight, frontZ        // 3: Top-right outer
+    );
+    
+    // Back face vertices
+    vertices.push(
+      rightEdge, baseThickness, backZ,                     // 4: Bottom-left inner
+      lipWidth/2, baseThickness, backZ,                    // 5: Bottom-right outer
+      rightEdge, topEdge, backZ,                           // 6: Top-left inner
+      lipWidth/2, baseThickness + lipHeight, backZ         // 7: Top-right outer
+    );
+    
+    // Add normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, 1);  // Front face normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, -1); // Back face normals
+    
+    // Add indices for right section
+    indices.push(
+      // Front face
+      rightSectionIndex, rightSectionIndex + 1, rightSectionIndex + 2,
+      rightSectionIndex + 1, rightSectionIndex + 3, rightSectionIndex + 2,
+      
+      // Back face
+      rightSectionIndex + 4, rightSectionIndex + 5, rightSectionIndex + 6,
+      rightSectionIndex + 5, rightSectionIndex + 7, rightSectionIndex + 6,
+      
+      // Inner right edge (facing the hole)
+      rightSectionIndex, rightSectionIndex + 2, rightSectionIndex + 4,
+      rightSectionIndex + 2, rightSectionIndex + 6, rightSectionIndex + 4,
+      
+      // Outer right edge
+      rightSectionIndex + 1, rightSectionIndex + 5, rightSectionIndex + 3,
+      rightSectionIndex + 3, rightSectionIndex + 5, rightSectionIndex + 7,
+      
+      // Bottom edge
+      rightSectionIndex, rightSectionIndex + 4, rightSectionIndex + 1,
+      rightSectionIndex + 1, rightSectionIndex + 4, rightSectionIndex + 5,
+      
+      // Top edge
+      rightSectionIndex + 2, rightSectionIndex + 3, rightSectionIndex + 6,
+      rightSectionIndex + 3, rightSectionIndex + 7, rightSectionIndex + 6
+    );
+    
+    // 3. Bottom section of the lip (below the opening)
+    const bottomSectionIndex = vertices.length / 3;
+    
+    // Front face vertices
+    vertices.push(
+      leftEdge, baseThickness, frontZ,                     // 0: Left
+      rightEdge, baseThickness, frontZ,                    // 1: Right
+      leftEdge, bottomEdge, frontZ,                        // 2: Left-top (at opening bottom)
+      rightEdge, bottomEdge, frontZ                        // 3: Right-top (at opening bottom)
+    );
+    
+    // Back face vertices
+    vertices.push(
+      leftEdge, baseThickness, backZ,                      // 4: Left
+      rightEdge, baseThickness, backZ,                     // 5: Right
+      leftEdge, bottomEdge, backZ,                         // 6: Left-top
+      rightEdge, bottomEdge, backZ                         // 7: Right-top
+    );
+    
+    // Add normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, 1);  // Front face normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, -1); // Back face normals
+    
+    // Add indices for bottom section
+    indices.push(
+      // Front face
+      bottomSectionIndex, bottomSectionIndex + 1, bottomSectionIndex + 2,
+      bottomSectionIndex + 1, bottomSectionIndex + 3, bottomSectionIndex + 2,
+      
+      // Back face
+      bottomSectionIndex + 4, bottomSectionIndex + 6, bottomSectionIndex + 5,
+      bottomSectionIndex + 5, bottomSectionIndex + 6, bottomSectionIndex + 7,
+      
+      // Bottom edge (connecting to base)
+      bottomSectionIndex, bottomSectionIndex + 4, bottomSectionIndex + 1,
+      bottomSectionIndex + 1, bottomSectionIndex + 4, bottomSectionIndex + 5,
+      
+      // Top edge (inner edge of opening)
+      bottomSectionIndex + 2, bottomSectionIndex + 3, bottomSectionIndex + 6,
+      bottomSectionIndex + 3, bottomSectionIndex + 7, bottomSectionIndex + 6,
+      
+      // Left edge (connecting to left section)
+      bottomSectionIndex, bottomSectionIndex + 2, bottomSectionIndex + 4,
+      bottomSectionIndex + 2, bottomSectionIndex + 6, bottomSectionIndex + 4,
+      
+      // Right edge (connecting to right section)
+      bottomSectionIndex + 1, bottomSectionIndex + 5, bottomSectionIndex + 3,
+      bottomSectionIndex + 3, bottomSectionIndex + 5, bottomSectionIndex + 7
+    );
+    
+    // 4. Top section of the lip (above the opening)
+    const topSectionIndex = vertices.length / 3;
+    
+    // Front face vertices
+    vertices.push(
+      leftEdge, topEdge, frontZ,                           // 0: Left-bottom (at opening top)
+      rightEdge, topEdge, frontZ,                          // 1: Right-bottom (at opening top)
+      leftEdge, baseThickness + lipHeight, frontZ,         // 2: Left-top
+      rightEdge, baseThickness + lipHeight, frontZ         // 3: Right-top
+    );
+    
+    // Back face vertices
+    vertices.push(
+      leftEdge, topEdge, backZ,                            // 4: Left-bottom
+      rightEdge, topEdge, backZ,                           // 5: Right-bottom
+      leftEdge, baseThickness + lipHeight, backZ,          // 6: Left-top
+      rightEdge, baseThickness + lipHeight, backZ          // 7: Right-top
+    );
+    
+    // Add normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, 1);  // Front face normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, -1); // Back face normals
+    
+    // Add indices for top section
+    indices.push(
+      // Front face
+      topSectionIndex, topSectionIndex + 2, topSectionIndex + 1,
+      topSectionIndex + 1, topSectionIndex + 2, topSectionIndex + 3,
+      
+      // Back face
+      topSectionIndex + 4, topSectionIndex + 5, topSectionIndex + 6,
+      topSectionIndex + 5, topSectionIndex + 7, topSectionIndex + 6,
+      
+      // Bottom edge (inner edge of opening)
+      topSectionIndex, topSectionIndex + 1, topSectionIndex + 4,
+      topSectionIndex + 1, topSectionIndex + 5, topSectionIndex + 4,
+      
+      // Top edge
+      topSectionIndex + 2, topSectionIndex + 6, topSectionIndex + 3,
+      topSectionIndex + 3, topSectionIndex + 6, topSectionIndex + 7,
+      
+      // Left edge (connecting to left section)
+      topSectionIndex, topSectionIndex + 4, topSectionIndex + 2,
+      topSectionIndex + 2, topSectionIndex + 4, topSectionIndex + 6,
+      
+      // Right edge (connecting to right section)
+      topSectionIndex + 1, topSectionIndex + 3, topSectionIndex + 5,
+      topSectionIndex + 3, topSectionIndex + 7, topSectionIndex + 5
+    );
+    
+    // 5. Inner edge faces connecting front to back (around the opening)
+    // These faces ensure the mesh is watertight around the cable opening
+    const innerEdgeIndex = vertices.length / 3;
+    
+    // We need to re-use previously added vertices rather than adding new ones
+    // Add indices to create faces connecting the inner edges of the opening
+    indices.push(
+      // Bottom inner edge (connecting bottom section's top to back)
+      bottomSectionIndex + 2, bottomSectionIndex + 6, bottomSectionIndex + 3,
+      bottomSectionIndex + 3, bottomSectionIndex + 6, bottomSectionIndex + 7,
+      
+      // Left inner edge (connecting left section's inner edge)
+      lipStartIndex + 1, lipStartIndex + 5, lipStartIndex + 3,
+      lipStartIndex + 3, lipStartIndex + 5, lipStartIndex + 7,
+      
+      // Right inner edge (connecting right section's inner edge)
+      rightSectionIndex, rightSectionIndex + 4, rightSectionIndex + 2,
+      rightSectionIndex + 2, rightSectionIndex + 4, rightSectionIndex + 6,
+      
+      // Top inner edge (connecting top section's bottom to back)
+      topSectionIndex, topSectionIndex + 4, topSectionIndex + 1,
+      topSectionIndex + 1, topSectionIndex + 4, topSectionIndex + 5
+    );
+    
+  } else {
+    // Without cable opening - create a complete solid lip
+    const lipStartIndex = vertices.length / 3;
+    
+    // Front face of lip
+    vertices.push(
+      -lipWidth/2, baseThickness, frontZ,                       // 0: Bottom left
+      lipWidth/2, baseThickness, frontZ,                        // 1: Bottom right
+      -lipWidth/2, baseThickness + lipHeight, frontZ,           // 2: Top left
+      lipWidth/2, baseThickness + lipHeight, frontZ             // 3: Top right
+    );
+    
+    // Back face of lip
+    vertices.push(
+      -lipWidth/2, baseThickness, backZ,                        // 4: Bottom left
+      lipWidth/2, baseThickness, backZ,                         // 5: Bottom right
+      -lipWidth/2, baseThickness + lipHeight, backZ,            // 6: Top left
+      lipWidth/2, baseThickness + lipHeight, backZ              // 7: Top right
+    );
+    
+    // Add normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, 1);  // Front face normals
+    for (let i = 0; i < 4; i++) normals.push(0, 0, -1); // Back face normals
+    
+    // Add indices to create a watertight volume
+    indices.push(
+      // Front face
+      lipStartIndex, lipStartIndex + 1, lipStartIndex + 2,
+      lipStartIndex + 1, lipStartIndex + 3, lipStartIndex + 2,
+      
+      // Back face
+      lipStartIndex + 4, lipStartIndex + 6, lipStartIndex + 5,
+      lipStartIndex + 5, lipStartIndex + 6, lipStartIndex + 7,
+      
+      // Left side face
+      lipStartIndex, lipStartIndex + 2, lipStartIndex + 4,
+      lipStartIndex + 2, lipStartIndex + 6, lipStartIndex + 4,
+      
+      // Right side face
+      lipStartIndex + 1, lipStartIndex + 5, lipStartIndex + 3,
+      lipStartIndex + 3, lipStartIndex + 5, lipStartIndex + 7,
+      
+      // Bottom face
+      lipStartIndex, lipStartIndex + 4, lipStartIndex + 1,
+      lipStartIndex + 1, lipStartIndex + 4, lipStartIndex + 5,
+      
+      // Top face
+      lipStartIndex + 2, lipStartIndex + 3, lipStartIndex + 6,
+      lipStartIndex + 3, lipStartIndex + 7, lipStartIndex + 6
+    );
+  }
+  
+  return { vertices, indices, normals };
+}
+
 function ParametricShape({ params, meshRef }: ParametricShapeProps) {
   const generateGeometry = useCallback(() => {
     switch (params.type) {
@@ -1232,6 +1734,8 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
         return generateBowlGeometry(params)
       case 'cylinderBase':
         return generateCylinderBaseGeometry(params)
+      case 'phoneHolder':
+        return generatePhoneHolderGeometry(params as PhoneHolderParams)
       default:
         return generateStandardGeometry(params)
     }
@@ -1432,6 +1936,13 @@ export default function Component() {
           ...prev,
           patternType: value as CoasterShapeParams['patternType']
         }
+      }
+      // Handle cableOpening separately to convert string to boolean
+      if (paramId === 'cableOpening') {
+        return {
+          ...prev,
+          cableOpening: value === 'true'
+        } as ShapeParams;
       }
       return {
       ...prev,
@@ -1650,6 +2161,26 @@ export default function Component() {
                         <SelectItem value="cylinder" className="text-white hover:bg-zinc-800">Cylinder</SelectItem>
                         <SelectItem value="flower" className="text-white hover:bg-zinc-800">Flower</SelectItem>
                         <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {shapeParams.type === 'phoneHolder' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Cable Opening</Label>
+                    <Select
+                      value={shapeParams.cableOpening ? "yes" : "no"}
+                      onValueChange={(value) => {
+                        updateParam("cableOpening", value === "yes" ? "true" : "false");
+                      }}
+                    >
+                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="yes" className="text-white hover:bg-zinc-800">Yes</SelectItem>
+                        <SelectItem value="no" className="text-white hover:bg-zinc-800">No</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
