@@ -2910,8 +2910,7 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
     
     switch (pegBranchStyle) {
       case 'simple':
-        // Create a single horizontal branch
-        // First, create a horizontal branch that extends from the center of the peg
+        // Create a single horizontal branch - T shape
         const simpleBranch = new THREE.CylinderGeometry(
           branchDiameter / 2,
           branchDiameter / 2,
@@ -2919,17 +2918,16 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
           8
         );
         
-        // First, rotate the branch so it's horizontal (along X-axis)
+        // Rotate the branch so it's horizontal (along X-axis)
         simpleBranch.rotateZ(Math.PI / 2);
         
-        // Move the branch so one end is at the center of the peg
-        // The cylinder is centered at origin by default, so move it by half its length
-        simpleBranch.translate(branchLength / 2, 0, 0);
+        // Move the branch so it's centered on the peg
+        simpleBranch.translate(0, 0, 0);
         
         // Now create a group to handle positioning
         const simpleBranchMesh = new THREE.Mesh(simpleBranch);
-        // Position the branch at the appropriate height on the peg
-        simpleBranchMesh.position.set(0, pegHeightCm * 0.7, 0);
+        // Position the branch near the top of the peg
+        simpleBranchMesh.position.set(0, pegHeightCm * 0.85, 0);
         
         // Create a new geometry from the transformed mesh
         const simpleBranchGeometry = simpleBranchMesh.geometry.clone();
@@ -2942,81 +2940,97 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
         break;
         
       case 'tree':
-        // Create multiple branches at different heights and angles
-        const branchCount = 3;
-        for (let i = 0; i < branchCount; i++) {
-          const branchHeight = pegHeightCm * (0.4 + i * 0.2);
-          const angle = (i / branchCount) * Math.PI * 2;
-          
-          const treeBranch = new THREE.CylinderGeometry(
-            branchDiameter / 2,
-            branchDiameter / 2,
-            branchLength,
+        // Create a tree-like structure with branches coming up at angles
+        const treeBaseHeight = pegHeightCm * 0.5; // Start branches halfway up
+        const branchAngles = [30, 60, 120, 150]; // Angles in degrees for upward branches
+        
+        for (let i = 0; i < branchAngles.length; i++) {
+          // Create an angled branch that points upward
+          const upBranch = new THREE.CylinderGeometry(
+            branchDiameter / 3, // Thinner at top
+            branchDiameter / 2, // Thicker at bottom
+            branchLength * 0.7,  // Shorter than simple branch
             8
           );
           
-          // First, rotate the branch to be horizontal
-          treeBranch.rotateZ(Math.PI / 2);
-          
-          // Move the branch so one end is at the origin
-          treeBranch.translate(branchLength / 2, 0, 0);
-          
           // Create a mesh to handle complex transforms
-          const treeBranchMesh = new THREE.Mesh(treeBranch);
+          const branchMesh = new THREE.Mesh(upBranch);
           
-          // Rotate around Y to create the tree pattern
-          treeBranchMesh.rotation.y = angle;
+          // Rotate to point up at an angle (convert degrees to radians)
+          const angleRad = (branchAngles[i] * Math.PI) / 180;
+          branchMesh.rotation.z = Math.PI / 2 - angleRad; // Rotate from horizontal to angled
           
-          // Position at the right height
-          treeBranchMesh.position.set(0, branchHeight, 0);
+          if (i >= 2) {
+            // Second half of branches go in opposite direction
+            branchMesh.rotation.y = Math.PI;
+          }
+          
+          // Position at the right height on the peg
+          branchMesh.position.set(0, treeBaseHeight, 0);
           
           // Extract the transformed geometry
-          const treeBranchGeometry = treeBranchMesh.geometry.clone();
-          treeBranchGeometry.applyMatrix4(treeBranchMesh.matrix);
+          const branchGeometry = branchMesh.geometry.clone();
+          branchGeometry.applyMatrix4(branchMesh.matrix);
           
           // Move to the peg's position
-          treeBranchGeometry.translate(x, y, z);
+          branchGeometry.translate(x, y, z);
           
-          branchGeometries.push(treeBranchGeometry);
+          branchGeometries.push(branchGeometry);
         }
+        
+        // Add a small ball at the top for aesthetics
+        const topSphere = new THREE.SphereGeometry(branchDiameter * 0.8, 8, 8);
+        topSphere.translate(0, pegHeightCm * 1.1, 0); // Position at top of peg
+        topSphere.translate(x, y, z); // Move to peg position
+        branchGeometries.push(topSphere);
+        
         break;
         
       case 'cross':
-        // Create two perpendicular branches forming a cross
-        for (let i = 0; i < 2; i++) {
-          const angle = i * Math.PI / 2;
-          
-          const crossBranch = new THREE.CylinderGeometry(
-            branchDiameter / 2,
-            branchDiameter / 2,
-            branchLength,
-            8
-          );
-          
-          // First, rotate the branch to be horizontal
-          crossBranch.rotateZ(Math.PI / 2);
-          
-          // Move the branch so one end is at the origin
-          crossBranch.translate(branchLength / 2, 0, 0);
-          
-          // Create a mesh to handle complex transforms
-          const crossBranchMesh = new THREE.Mesh(crossBranch);
-          
-          // Rotate around Y to create the cross pattern
-          crossBranchMesh.rotation.y = angle;
-          
-          // Position at a fixed height on the peg
-          crossBranchMesh.position.set(0, pegHeightCm * 0.7, 0);
-          
-          // Extract the transformed geometry
-          const crossBranchGeometry = crossBranchMesh.geometry.clone();
-          crossBranchGeometry.applyMatrix4(crossBranchMesh.matrix);
-          
-          // Move to the peg's position
-          crossBranchGeometry.translate(x, y, z);
-          
-          branchGeometries.push(crossBranchGeometry);
-        }
+        // Create a proper cross shape with horizontal and vertical bars
+        
+        // Horizontal bar (wider and shorter than the simple branch)
+        const horizontalBar = new THREE.CylinderGeometry(
+          branchDiameter / 2,
+          branchDiameter / 2,
+          branchLength * 1.2, // Wider than simple
+          8
+        );
+        
+        // Rotate to horizontal
+        horizontalBar.rotateZ(Math.PI / 2);
+        
+        // Create a mesh for transformation
+        const horizontalMesh = new THREE.Mesh(horizontalBar);
+        horizontalMesh.position.set(0, pegHeightCm * 0.65, 0); // Position near top
+        
+        // Extract transformed geometry
+        const horizontalGeometry = horizontalMesh.geometry.clone();
+        horizontalGeometry.applyMatrix4(horizontalMesh.matrix);
+        horizontalGeometry.translate(x, y, z);
+        branchGeometries.push(horizontalGeometry);
+        
+        // Vertical bar (taller)
+        const verticalBar = new THREE.CylinderGeometry(
+          branchDiameter / 2,
+          branchDiameter / 2,
+          branchLength * 0.7, // Shorter than horizontal
+          8
+        );
+        
+        // No rotation needed for vertical
+        
+        // Create a mesh for positioning
+        const verticalMesh = new THREE.Mesh(verticalBar);
+        // Position it at the center of the horizontal bar but higher
+        verticalMesh.position.set(0, pegHeightCm * 0.65 + branchLength * 0.35, 0);
+        
+        // Extract transformed geometry
+        const verticalGeometry = verticalMesh.geometry.clone();
+        verticalGeometry.applyMatrix4(verticalMesh.matrix);
+        verticalGeometry.translate(x, y, z);
+        branchGeometries.push(verticalGeometry);
+        
         break;
     }
     
