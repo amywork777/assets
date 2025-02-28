@@ -405,27 +405,24 @@ const categories: Record<string, CategoryInfo> = {
   },
   jewelryHolder: {
     name: 'Jewelry Holder',
-    description: 'Custom jewelry holder with pegs for hanging items',
+    description: 'Organize and display your jewelry with our customizable holder.',
     priceInfo: {
-      small: {
-        dimensions: '4 x 4 x 3 inches',
-        price: 35,
-        priceId: 'price_1OAVD0HUG4l3RfxxAkLUdMsm'
-      }
+      small: { dimensions: '6"W × 6"D × 6"H', price: 39.99, priceId: 'price_jewelryholder_small' },
+      medium: { dimensions: '8"W × 8"D × 8"H', price: 49.99, priceId: 'price_jewelryholder_medium' },
     },
     defaults: {
       type: 'jewelryHolder',
-      material: 'glossWhite',
-      baseWidth: 4,
-      baseDepth: 4,
-      baseHeight: 0.5,
-      baseStyle: 'square', // Default to square since we're removing curved
-      pegHeight: 3,
-      pegDiameter: 0.25,
+      material: 'shiny',
+      baseWidth: 6,
+      baseDepth: 6,
+      baseHeight: 0.75,
+      baseStyle: 'square',
+      pegHeight: 5,
+      pegDiameter: 0.4,
       pegArrangement: 'circular',
-      pegCount: 5,
-      pegBranchStyle: 'simple'
-    }
+      pegCount: 7,
+      pegBranchStyle: 'simple',
+    },
   },
 } as const
 
@@ -726,7 +723,7 @@ interface JewelryHolderParams extends BaseShapeParams {
   baseWidth: number; // Width of the base in inches
   baseDepth: number; // Depth of the base in inches
   baseHeight: number; // Height of the base in inches
-  baseStyle: 'square' | 'round' | 'tiered'; // Style of the base (removed 'curved')
+  baseStyle: 'square' | 'round' | 'curved' | 'tiered'; // Style of the base
   pegHeight: number; // Height of the jewelry pegs in inches
   pegDiameter: number; // Diameter of the pegs in inches
   pegArrangement: 'linear' | 'circular' | 'scattered'; // Arrangement pattern of pegs
@@ -2816,16 +2813,16 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
     pegBranchStyle
   } = params;
 
-  // Convert inches to cm
+  // Convert inches to centimeters
   const baseWidthCm = inchesToCm(baseWidth);
   const baseDepthCm = inchesToCm(baseDepth);
   const baseHeightCm = inchesToCm(baseHeight);
   const pegHeightCm = inchesToCm(pegHeight);
   const pegDiameterCm = inchesToCm(pegDiameter);
-  
-  // Create base geometry
-  let baseGeometry: THREE.BufferGeometry;
 
+  // Create the base based on style
+  let baseGeometry: THREE.BufferGeometry;
+  
   switch (baseStyle) {
     case 'round':
       // Improved round base with better proportions
@@ -2840,28 +2837,95 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
       baseGeometry.translate(0, baseHeightCm / 2, 0);
       break;
       
+    case 'curved':
+      // Create a curved base with proper beveled edges
+      const shape = new THREE.Shape();
+      const width = baseWidthCm;
+      const depth = baseDepthCm;
+      const radius = Math.min(width, depth) * 0.15; // Corner radius
+      
+      // Draw the shape with proper curves
+      shape.moveTo(-width/2 + radius, -depth/2);
+      shape.lineTo(width/2 - radius, -depth/2);
+      shape.arc(0, radius, radius, -Math.PI/2, 0, false);
+      shape.lineTo(width/2, depth/2 - radius);
+      shape.arc(0, radius, radius, 0, Math.PI/2, false);
+      shape.lineTo(-width/2 + radius, depth/2);
+      shape.arc(0, radius, radius, Math.PI/2, Math.PI, false);
+      shape.lineTo(-width/2, -depth/2 + radius);
+      shape.arc(0, radius, radius, Math.PI, Math.PI*3/2, false);
+      
+      const extrudeSettings = {
+        steps: 2,
+        depth: baseHeightCm,
+        bevelEnabled: true,
+        bevelThickness: baseHeightCm * 0.1,
+        bevelSize: baseHeightCm * 0.05,
+        bevelOffset: 0,
+        bevelSegments: 5
+      };
+      
+      baseGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      
+      // Fix orientation and positioning
+      const curvedBaseMesh = new THREE.Mesh(baseGeometry);
+      curvedBaseMesh.rotation.x = -Math.PI/2; // Rotate to make the base flat on the XZ plane
+      const curvedBaseGeometry = baseGeometry.clone();
+      curvedBaseGeometry.applyMatrix4(curvedBaseMesh.matrix);
+      
+      // Adjust position so bottom is at y=0 and top surface is at y=baseHeightCm
+      curvedBaseGeometry.translate(0, 0, 0);
+      baseGeometry = curvedBaseGeometry;
+      break;
+      
     case 'tiered':
-      // Simplified tiered base with clearly visible layers
+      // Create a properly tiered base with graduated levels
       const tierCount = 3;
-      const tierGeometries = [];
+      const tierGeometries: THREE.BufferGeometry[] = [];
       
       for (let i = 0; i < tierCount; i++) {
-        // Each tier gets progressively smaller
-        const tierScale = 1 - (i * 0.2);
+        // Scale each tier progressively smaller
+        const tierScale = 1 - (i * 0.25);
         const tierWidth = baseWidthCm * tierScale;
         const tierDepth = baseDepthCm * tierScale;
         const tierHeight = baseHeightCm / tierCount;
+        
+        // Position each tier with proper stacking
         const tierY = i * tierHeight;
         
-        // Create simple box for each tier
-        const tier = new THREE.BoxGeometry(
-          tierWidth,
-          tierHeight,
-          tierDepth
-        );
+        // Create tier with rounded edges for better appearance
+        const tierShape = new THREE.Shape();
+        const tierRadius = Math.min(tierWidth, tierDepth) * 0.1;
         
-        tier.translate(0, tierY + tierHeight/2, 0);
-        tierGeometries.push(tier);
+        // Draw rounded rectangle shape for each tier
+        tierShape.moveTo(-tierWidth/2 + tierRadius, -tierDepth/2);
+        tierShape.lineTo(tierWidth/2 - tierRadius, -tierDepth/2);
+        tierShape.arc(0, tierRadius, tierRadius, -Math.PI/2, 0, false);
+        tierShape.lineTo(tierWidth/2, tierDepth/2 - tierRadius);
+        tierShape.arc(0, tierRadius, tierRadius, 0, Math.PI/2, false);
+        tierShape.lineTo(-tierWidth/2 + tierRadius, tierDepth/2);
+        tierShape.arc(0, tierRadius, tierRadius, Math.PI/2, Math.PI, false);
+        tierShape.lineTo(-tierWidth/2, -tierDepth/2 + tierRadius);
+        tierShape.arc(0, tierRadius, tierRadius, Math.PI, Math.PI*3/2, false);
+        
+        const tierExtrudeSettings = {
+          steps: 1,
+          depth: tierHeight,
+          bevelEnabled: false
+        };
+        
+        const tierGeometry = new THREE.ExtrudeGeometry(tierShape, tierExtrudeSettings);
+        
+        // Fix orientation for each tier
+        const tierMesh = new THREE.Mesh(tierGeometry);
+        tierMesh.rotation.x = -Math.PI/2; // Rotate to make the tier flat on the XZ plane
+        const rotatedTierGeometry = tierGeometry.clone();
+        rotatedTierGeometry.applyMatrix4(tierMesh.matrix);
+        
+        // Position tier correctly at its height
+        rotatedTierGeometry.translate(0, tierY, 0);
+        
+        tierGeometries.push(rotatedTierGeometry);
       }
       
       baseGeometry = BufferGeometryUtils.mergeGeometries(tierGeometries);
@@ -2892,8 +2956,8 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
     
     switch (pegBranchStyle) {
       case 'simple':
-        // Create two angled branches for simple style (like a coat hanger)
-        const angles = [45, 135]; // Angles in degrees
+        // Simple design: two angled branches like a coat hanger
+        const angles = [35, 145]; // Changed angles for better spacing
         
         for (const angle of angles) {
           // Convert angle to radians
@@ -2901,150 +2965,223 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
           
           // Create angled branch
           const branch = new THREE.CylinderGeometry(
-            branchDiameter * 0.4, // Thinner at tip
-            branchDiameter * 0.5, // Thicker at base
-            branchLength * 0.8,   // Slightly shorter for better proportion
+            branchDiameter * 0.3, // Thinner at tip
+            branchDiameter * 0.6, // Thicker at base
+            branchLength * 0.9,   // Slightly longer
             10
           );
           
-          // Rotate branch to horizontal first
-          branch.rotateZ(Math.PI/2);
+          // Create a mesh to transform and position
+          const branchMesh = new THREE.Mesh(branch);
           
-          // Then rotate to the desired angle
-          branch.rotateY(angleRad);
+          // Position branch at top of peg
+          branchMesh.position.set(0, pegHeightCm * 0.95, 0);
           
-          // Position branch at 80% height of peg
-          branch.translate(0, pegHeightCm * 0.8, 0);
+          // Rotate branch to proper angle (from vertical)
+          branchMesh.rotation.z = Math.PI/2 - angleRad;
+          
+          // Apply the transformation
+          const branchGeometry = branch.clone();
+          branchGeometry.applyMatrix4(branchMesh.matrix);
           
           // Translate to peg position
-          branch.translate(x, y, z);
+          branchGeometry.translate(x, y, z);
           
-          branchGeometries.push(branch);
+          branchGeometries.push(branchGeometry);
           
           // Add a small ball at the end to prevent jewelry from falling off
-          const ball = new THREE.SphereGeometry(branchDiameter * 0.7, 8, 8);
+          const ball = new THREE.SphereGeometry(branchDiameter * 0.7, 12, 12);
+          const ballMesh = new THREE.Mesh(ball);
           
           // Calculate position for the ball at end of branch
-          const ballX = Math.cos(angleRad) * branchLength * 0.4;
-          const ballZ = Math.sin(angleRad) * branchLength * 0.4;
+          const ballDistance = branchLength * 0.45;
+          const ballX = Math.sin(angleRad) * ballDistance;
+          const ballY = Math.cos(angleRad) * ballDistance;
           
           // Position ball at end of branch
-          ball.translate(ballX, pegHeightCm * 0.8, ballZ);
-          ball.translate(x, y, z);
+          ballMesh.position.set(
+            ballX, 
+            pegHeightCm * 0.95 + ballY, 
+            0
+          );
           
-          branchGeometries.push(ball);
+          // Apply transformation and position
+          const ballGeometry = ball.clone();
+          ballGeometry.applyMatrix4(ballMesh.matrix);
+          ballGeometry.translate(x, y, z);
+          
+          branchGeometries.push(ballGeometry);
         }
         break;
         
       case 'tree':
-        // Create a simple tree-like structure with visible branches
+        // Tree design: multiple branches radiating from central trunk in 3D
+        const branchCount = 5; // Increased to 5 branches for more visual distinctiveness
+        const maxBranchAngle = 40; // Increased angle for better spread
         
-        // Main vertical trunk extending from the peg
+        // Create the main vertical trunk
         const trunk = new THREE.CylinderGeometry(
-          branchDiameter * 0.5,
-          branchDiameter * 0.6,
-          pegHeightCm * 0.3,
-          8
+          branchDiameter * 0.6,   // Thinner at top
+          branchDiameter * 0.9,   // Thicker at base
+          pegHeightCm * 0.5,      // Taller trunk
+          10
         );
         
-        // Position trunk at top of peg
-        trunk.translate(0, pegHeightCm + (pegHeightCm * 0.15), 0);
-        trunk.translate(x, y, z);
-        branchGeometries.push(trunk);
+        // Position the trunk at the top of the peg
+        const trunkMesh = new THREE.Mesh(trunk);
+        trunkMesh.position.set(0, pegHeightCm * 0.95, 0); // Position at top of peg
         
-        // Create four branches extending from trunk
-        const branchAngles = [45, 135, 225, 315]; // Angles in degrees
+        const trunkGeometry = trunk.clone();
+        trunkGeometry.applyMatrix4(trunkMesh.matrix);
+        trunkGeometry.translate(x, y, z);
+        branchGeometries.push(trunkGeometry);
         
-        for (const angle of branchAngles) {
-          // Convert to radians
-          const angleRad = (angle * Math.PI) / 180;
+        // Create branches that connect to the trunk at specific angles (now with 3D distribution)
+        for (let i = 0; i < branchCount; i++) {
+          // Calculate angle (distribute evenly around the circle)
+          const angle = (i / branchCount) * Math.PI * 2;
           
-          // Create branch
-          const branchHeight = branchLength * 0.6;
+          // Create angled branch
           const branch = new THREE.CylinderGeometry(
-            branchDiameter * 0.4,
-            branchDiameter * 0.5,
-            branchHeight,
+            branchDiameter * 0.3,   // Thinner at tip
+            branchDiameter * 0.6,   // Thicker at base
+            branchLength * 0.6,     // Shorter than simple branches
             8
           );
           
-          // Position at top of peg plus trunk
-          branch.rotateX(Math.PI/2);
-          branch.rotateZ(Math.PI/6); // Angle up 30 degrees
-          branch.rotateY(angleRad);
+          // Position and rotate properly
+          const branchMesh = new THREE.Mesh(branch);
+          // Position at the top of the trunk
+          branchMesh.position.set(0, pegHeightCm * 1.2, 0);
           
-          // Position at top of trunk
-          branch.translate(0, pegHeightCm + pegHeightCm * 0.3, 0);
-          branch.translate(x, y, z);
-          branchGeometries.push(branch);
+          // Different upward angle for each branch (between 30 and 50 degrees)
+          const upAngle = 30 + (i % 3) * 10; // Varies between 30, 40, and 50 degrees
           
-          // Add ball at end of branch
-          const ball = new THREE.SphereGeometry(branchDiameter * 0.7, 8, 8);
+          // Set rotations for a 3D tree-like arrangement
+          branchMesh.rotation.x = (90 - upAngle) * Math.PI/180;
+          branchMesh.rotation.y = angle;
           
-          // Calculate position
-          const branchAngle = Math.PI/6; // 30 degrees in radians
-          const dist = branchLength * 0.4;
+          const branchGeometry = branch.clone();
+          branchGeometry.applyMatrix4(branchMesh.matrix);
+          branchGeometry.translate(x, y, z);
+          branchGeometries.push(branchGeometry);
           
-          // Calculate position using spherical coordinates
-          const distX = Math.cos(angleRad) * Math.cos(branchAngle) * dist;
-          const distY = Math.sin(branchAngle) * dist;
-          const distZ = Math.sin(angleRad) * Math.cos(branchAngle) * dist;
+          // Add a small decorative ball at the end of each branch
+          const ballSize = branchDiameter * 0.8;
+          const ball = new THREE.SphereGeometry(ballSize, 12, 12);
+          const ballMesh = new THREE.Mesh(ball);
+          
+          // Calculate ball position at the end of the branch
+          const ballDistance = branchLength * 0.3;
+          const ballX = Math.sin(upAngle * Math.PI/180) * Math.cos(angle) * ballDistance;
+          const ballZ = Math.sin(upAngle * Math.PI/180) * Math.sin(angle) * ballDistance;
+          const ballY = Math.cos(upAngle * Math.PI/180) * ballDistance;
           
           // Position ball at end of branch
-          ball.translate(distX, pegHeightCm + pegHeightCm * 0.3 + distY, distZ);
-          ball.translate(x, y, z);
-          branchGeometries.push(ball);
+          ballMesh.position.set(
+            ballX, 
+            pegHeightCm * 1.2 + ballY, 
+            ballZ
+          );
+          
+          const ballGeometry = ball.clone();
+          ballGeometry.applyMatrix4(ballMesh.matrix);
+          ballGeometry.translate(x, y, z);
+          branchGeometries.push(ballGeometry);
         }
         break;
         
       case 'cross':
-        // Create a visible cross with horizontal and vertical bars
+        // Cross design: distinctive cross with angled hooks at each end
+        // First create two crossed bars
+        const barLength = branchLength * 0.8; 
+        const barWidth = branchDiameter * 0.7; // Slightly thicker bars
         
-        // Position at 80% of peg height to ensure visibility
-        const crossY = pegHeightCm * 0.8;
+        // Create the cross with perpendicular bars
+        const horizontalBar = new THREE.BoxGeometry(barLength, barWidth, barWidth);
+        const verticalBar = new THREE.BoxGeometry(barWidth, barLength * 0.7, barWidth);
         
-        // Horizontal bar
-        const hBar = new THREE.CylinderGeometry(
-          branchDiameter * 0.6,
-          branchDiameter * 0.6,
-          branchLength,
-          8
-        );
+        // Position horizontal bar
+        const horizontalMesh = new THREE.Mesh(horizontalBar);
+        horizontalMesh.position.set(0, pegHeightCm * 0.9, 0);
+        const horizontalGeometry = horizontalBar.clone();
+        horizontalGeometry.applyMatrix4(horizontalMesh.matrix);
+        horizontalGeometry.translate(x, y, z);
+        branchGeometries.push(horizontalGeometry);
         
-        // Rotate to horizontal
-        hBar.rotateZ(Math.PI/2);
+        // Position vertical bar
+        const verticalMesh = new THREE.Mesh(verticalBar);
+        verticalMesh.position.set(0, pegHeightCm * 0.9 + barLength * 0.35, 0);
+        const verticalGeometry = verticalBar.clone();
+        verticalGeometry.applyMatrix4(verticalMesh.matrix);
+        verticalGeometry.translate(x, y, z);
+        branchGeometries.push(verticalGeometry);
         
-        // Position at 80% of peg height
-        hBar.translate(0, crossY, 0);
-        hBar.translate(x, y, z);
-        branchGeometries.push(hBar);
-        
-        // Vertical bar (shorter than horizontal)
-        const vBar = new THREE.CylinderGeometry(
-          branchDiameter * 0.6,
-          branchDiameter * 0.6,
-          branchLength * 0.8,
-          8
-        );
-        
-        // Position vertical bar above horizontal
-        vBar.translate(0, crossY + (branchLength * 0.4), 0);
-        vBar.translate(x, y, z);
-        branchGeometries.push(vBar);
-        
-        // Add balls at the four ends of the cross
-        const ballPositions = [
-          { x: branchLength/2, y: crossY, z: 0 },             // Right
-          { x: -branchLength/2, y: crossY, z: 0 },            // Left
-          { x: 0, y: crossY + branchLength * 0.8, z: 0 },     // Top
-          { x: 0, y: crossY - branchDiameter, z: 0 }          // Bottom (just below horizontal)
+        // Now add angled hooks at each end of the cross
+        const tipPositions = [
+          { x: barLength/2, y: pegHeightCm * 0.9, z: 0, angle: 0 },       // Right
+          { x: -barLength/2, y: pegHeightCm * 0.9, z: 0, angle: 180 },    // Left
+          { x: 0, y: pegHeightCm * 0.9 + barLength * 0.7, z: 0, angle: 270 },   // Top
+          { x: 0, y: pegHeightCm * 0.9 - barWidth, z: 0, angle: 90 }      // Bottom
         ];
         
-        for (const pos of ballPositions) {
-          const ball = new THREE.SphereGeometry(branchDiameter * 0.7, 8, 8);
-          ball.translate(pos.x, pos.y, pos.z);
-          ball.translate(x, y, z);
-          branchGeometries.push(ball);
+        // Add curved hooks at each tip
+        for (const tip of tipPositions) {
+          // Create curved hook (using toroidal segment for a hook shape)
+          const hookRadius = branchLength * 0.15;
+          const hookTubeRadius = branchDiameter * 0.3;
+          const hookArc = Math.PI; // 180 degree hook
+          
+          // Create a curved hook
+          const hook = new THREE.TorusGeometry(
+            hookRadius,        // radius of the entire torus
+            hookTubeRadius,    // thickness of the tube
+            8,                 // tubular segments
+            12,                // radial segments
+            hookArc            // arc (partial torus)
+          );
+          
+          const hookMesh = new THREE.Mesh(hook);
+          
+          // Position and rotate the hook based on which tip we're at
+          if (tip.angle === 0) { // Right
+            hookMesh.position.set(tip.x + hookRadius, tip.y, tip.z);
+            hookMesh.rotation.y = Math.PI/2;
+          } else if (tip.angle === 180) { // Left
+            hookMesh.position.set(tip.x - hookRadius, tip.y, tip.z);
+            hookMesh.rotation.y = -Math.PI/2;
+          } else if (tip.angle === 90) { // Bottom
+            hookMesh.position.set(tip.x, tip.y - hookRadius, tip.z);
+            hookMesh.rotation.x = Math.PI/2;
+          } else if (tip.angle === 270) { // Top
+            hookMesh.position.set(tip.x, tip.y + hookRadius, tip.z);
+            hookMesh.rotation.x = -Math.PI/2;
+          }
+          
+          const hookGeometry = hook.clone();
+          hookGeometry.applyMatrix4(hookMesh.matrix);
+          hookGeometry.translate(x, y, z);
+          branchGeometries.push(hookGeometry);
+          
+          // Add ball at end of hook
+          const ball = new THREE.SphereGeometry(hookTubeRadius * 1.5, 10, 10);
+          const ballMesh = new THREE.Mesh(ball);
+          
+          // Position ball at end of hook
+          if (tip.angle === 0) { // Right
+            ballMesh.position.set(tip.x + hookRadius * 2, tip.y, tip.z);
+          } else if (tip.angle === 180) { // Left
+            ballMesh.position.set(tip.x - hookRadius * 2, tip.y, tip.z);
+          } else if (tip.angle === 90) { // Bottom
+            ballMesh.position.set(tip.x, tip.y - hookRadius * 2, tip.z);
+          } else if (tip.angle === 270) { // Top
+            ballMesh.position.set(tip.x, tip.y + hookRadius * 2, tip.z);
+          }
+          
+          const ballGeometry = ball.clone();
+          ballGeometry.applyMatrix4(ballMesh.matrix);
+          ballGeometry.translate(x, y, z);
+          branchGeometries.push(ballGeometry);
         }
         break;
     }
@@ -3052,80 +3189,64 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
     return branchGeometries;
   };
   
-  // Place pegs on the base
-  const pegGeometry = new THREE.CylinderGeometry(
-    pegDiameterCm / 2,
-    pegDiameterCm / 2,
-    pegHeightCm,
-    16
-  );
+  // Create a peg template
+  const pegGeometry = new THREE.CylinderGeometry(pegDiameterCm / 2, pegDiameterCm / 2, pegHeightCm, 8);
   
-  // Ensure the bottom of the peg is at y=0 so we can position it on top of the base
-  pegGeometry.translate(0, pegHeightCm / 2, 0);
-  
-  // Calculate peg positions based on arrangement type
-  const pegPositions: Array<{ x: number, y: number, z: number }> = [];
-  
-  // Create peg positions
+  // Generate pegs based on arrangement
   switch (pegArrangement) {
     case 'linear':
-      // Place pegs in a straight line along the center of the base
-      const spacing = baseWidthCm / (pegCount + 1);
-      for (let i = 0; i < pegCount; i++) {
-        const x = (i + 1) * spacing - baseWidthCm / 2;
-        // Place pegs directly on top of the base
-        const y = baseHeightCm;
+      // Place pegs in a line across the center of the base
+      const lineSpacing = baseWidthCm / (pegCount + 1);
+      for (let i = 1; i <= pegCount; i++) {
+        const x = -baseWidthCm / 2 + i * lineSpacing;
+        const y = baseHeightCm + pegHeightCm / 2;
         const z = 0;
-        pegPositions.push({ x, y, z });
+        
+        const pegInstance = pegGeometry.clone();
+        pegInstance.translate(x, y, z);
+        
+        // Add branches to the peg
+        const branches = createBranches(pegInstance, x, y, z);
+        geometries.push(...branches);
       }
       break;
-    
+      
     case 'circular':
       // Place pegs in a circle on the base
-      const radius = Math.min(baseWidthCm, baseDepthCm) * 0.35;
+      const radius = Math.min(baseWidthCm, baseDepthCm) * 0.4;
       for (let i = 0; i < pegCount; i++) {
         const angle = (i / pegCount) * Math.PI * 2;
         const x = Math.cos(angle) * radius;
-        // Place pegs directly on top of the base
-        const y = baseHeightCm; 
+        const y = baseHeightCm + pegHeightCm / 2;
         const z = Math.sin(angle) * radius;
-        pegPositions.push({ x, y, z });
+        
+        const pegInstance = pegGeometry.clone();
+        pegInstance.translate(x, y, z);
+        
+        // Add branches to the peg
+        const branches = createBranches(pegInstance, x, y, z);
+        geometries.push(...branches);
       }
       break;
-    
+      
     case 'scattered':
       // Place pegs randomly on the base
       for (let i = 0; i < pegCount; i++) {
-        // Avoid edges by reducing usable space by 20%
-        const margin = 0.2;
-        const xRange = baseWidthCm * (1 - margin);
-        const zRange = baseDepthCm * (1 - margin);
+        // Random position, but keep away from edges
+        const x = (Math.random() - 0.5) * (baseWidthCm - pegDiameterCm);
+        const y = baseHeightCm + pegHeightCm / 2;
+        const z = (Math.random() - 0.5) * (baseDepthCm - pegDiameterCm);
         
-        const x = (Math.random() * xRange) - (xRange / 2);
-        // Place pegs directly on top of the base
-        const y = baseHeightCm;
-        const z = (Math.random() * zRange) - (zRange / 2);
+        const pegInstance = pegGeometry.clone();
+        pegInstance.translate(x, y, z);
         
-        pegPositions.push({ x, y, z });
+        // Add branches to the peg
+        const branches = createBranches(pegInstance, x, y, z);
+        geometries.push(...branches);
       }
       break;
   }
-  
-  // Add pegs and branches at the calculated positions
-  for (const pos of pegPositions) {
-    // Clone the peg geometry for this position
-    const pegInstance = pegGeometry.clone();
-    // Move to position
-    pegInstance.translate(pos.x, pos.y, pos.z);
-    
-    // Add peg
-    geometries.push(pegInstance);
-    
-    // Add branches for this peg
-    const branches = createBranches(new THREE.BufferGeometry(), pos.x, pos.y, pos.z);
-    geometries.push(...branches);
-  }
-  
+
   // Merge all geometries
   const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
   
@@ -3789,6 +3910,7 @@ export default function Component() {
                         <SelectContent className="bg-zinc-900 border-zinc-700">
                           <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
                           <SelectItem value="round" className="text-white hover:bg-zinc-800">Round</SelectItem>
+                          <SelectItem value="curved" className="text-white hover:bg-zinc-800">Curved</SelectItem>
                           <SelectItem value="tiered" className="text-white hover:bg-zinc-800">Tiered</SelectItem>
                         </SelectContent>
                       </Select>
