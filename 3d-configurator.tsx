@@ -324,14 +324,13 @@ const categories: Record<string, CategoryInfo> = {
     },
     defaults: {
       type: 'pencilHolder',
+      shape: 'circle',
       material: 'shiny',
       height: 3.5,
       diameter: 3,
       wallThickness: 0.2,
-      patternType: 'plain',
-      patternDepth: 0.1,
-      patternScale: 0.5,
-      hasDivider: false
+      dividerType: 'none',
+      dividerCount: 2
     }
   },
 } as const
@@ -410,10 +409,9 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
     case 'pencilHolder':
       return [
         { id: "height" as const, label: "Height (in)", min: 2, max: 6, step: 0.25 },
-        { id: "diameter" as const, label: "Diameter (in)", min: 2, max: 5, step: 0.25 },
+        { id: "diameter" as const, label: "Diameter/Width (in)", min: 2, max: 5, step: 0.25 },
         { id: "wallThickness" as const, label: "Wall Thickness (in)", min: 0.1, max: 0.4, step: 0.05 },
-        { id: "patternDepth" as const, label: "Pattern Depth", min: 0, max: 0.15, step: 0.01 },
-        { id: "patternScale" as const, label: "Pattern Scale", min: 0.2, max: 2, step: 0.1 }
+        { id: "dividerCount" as const, label: "Grid Size", min: 2, max: 4, step: 1 }
       ] as const
   }
 }
@@ -559,13 +557,12 @@ interface BraceletParams extends BaseShapeParams {
 
 interface PencilHolderParams extends BaseShapeParams {
   type: 'pencilHolder';
+  shape: 'circle' | 'square'; // Shape of the pencil holder
   height: number; // Height in inches
-  diameter: number; // Outer diameter in inches
+  diameter: number; // Outer diameter/width in inches
   wallThickness: number; // Wall thickness in inches
-  patternType: 'plain' | 'geometric' | 'fluted' | 'honeycomb';
-  patternDepth: number; // How deep the pattern goes
-  patternScale: number; // Scale of the pattern
-  hasDivider: boolean; // Whether to include a center divider
+  dividerType: 'none' | 'single' | 'cross' | 'grid'; // Type of divider
+  dividerCount: number; // Number of dividers (for grid type)
 }
 
 type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams
@@ -1966,28 +1963,25 @@ function generateBraceletGeometry(params: BraceletParams) {
 
 function generatePencilHolderGeometry(params: PencilHolderParams) {
   const {
+    shape,
     height: heightInches,
     diameter: diameterInches,
     wallThickness: wallThicknessInches,
-    patternType,
-    patternDepth: patternDepthValue,
-    patternScale: patternScaleValue,
-    hasDivider
+    dividerType,
+    dividerCount
   } = params;
   
   // Convert to cm
   const height = inchesToCm(heightInches);
   const diameter = inchesToCm(diameterInches);
   const wallThickness = inchesToCm(wallThicknessInches);
-  const patternDepth = inchesToCm(patternDepthValue);
   
-  // Calculate inner diameter
+  // Calculate inner diameter/width
   const innerDiameter = diameter - 2 * wallThickness;
   
   // Number of segments for the circle
-  const radialSegments = 48;
+  const radialSegments = shape === 'circle' ? 48 : 4;
   const heightSegments = 1;
-  const baseSegments = 1;
   
   // Arrays for vertices, indices, and normals
   const vertices: number[] = [];
@@ -2001,11 +1995,36 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
   vertices.push(0, bottomY, 0);
   normals.push(0, -1, 0);
   
-  // Base outer vertices
+  // Base outer vertices - circle or square
   for (let i = 0; i <= radialSegments; i++) {
     const theta = (i / radialSegments) * Math.PI * 2;
-    const x = diameter / 2 * Math.cos(theta);
-    const z = diameter / 2 * Math.sin(theta);
+    let x, z;
+    
+    if (shape === 'circle') {
+      x = diameter / 2 * Math.cos(theta);
+      z = diameter / 2 * Math.sin(theta);
+    } else {
+      // For square, calculate the x,z coordinates of the corners and edges
+      const segmentPos = i % radialSegments;
+      const halfWidth = diameter / 2;
+      
+      if (segmentPos === 0) {
+        x = halfWidth;
+        z = halfWidth;
+      } else if (segmentPos === 1) {
+        x = -halfWidth;
+        z = halfWidth;
+      } else if (segmentPos === 2) {
+        x = -halfWidth;
+        z = -halfWidth;
+      } else if (segmentPos === 3) {
+        x = halfWidth;
+        z = -halfWidth;
+      } else {
+        x = halfWidth;
+        z = halfWidth;
+      }
+    }
     
     vertices.push(x, bottomY, z);
     normals.push(0, -1, 0);
@@ -2028,51 +2047,84 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
     const yPos = bottomY + (y / heightSegments) * height;
     
     for (let i = 0; i <= radialSegments; i++) {
-      const theta = (i / radialSegments) * Math.PI * 2;
+      let outerX, outerZ, nx, nz;
       
-      // Add pattern to the outer surface
-      let patternOffset = 0;
-      if (patternType !== 'plain' && patternDepth > 0) {
-        const patternScale = patternScaleValue * 5;
-        const heightRatio = yPos / height;
+      if (shape === 'circle') {
+        const theta = (i / radialSegments) * Math.PI * 2;
         
-        switch (patternType) {
-          case 'geometric':
-            patternOffset = patternDepth * Math.abs(Math.sin(theta * patternScale) * Math.sin(heightRatio * patternScale * 2));
-            break;
-          case 'fluted':
-            patternOffset = patternDepth * Math.abs(Math.sin(theta * patternScale));
-            break;
-          case 'honeycomb':
-            // Honeycomb-like pattern
-            const hexScale = patternScale * 10;
-            const hexY = Math.floor(heightRatio * hexScale) / hexScale;
-            const hexTheta = Math.floor(theta * hexScale) / hexScale;
-            const distFromCenter = Math.sqrt(
-              Math.pow(theta - hexTheta - 1/(hexScale*2), 2) + 
-              Math.pow(heightRatio - hexY - (Math.floor(hexTheta * hexScale) % 2 ? 0 : 1/(hexScale*2)), 2)
-            );
-            patternOffset = patternDepth * (distFromCenter < 0.5 / hexScale ? 1 : 0);
-            break;
+        // Outer wall vertex - circle
+        outerX = diameter / 2 * Math.cos(theta);
+        outerZ = diameter / 2 * Math.sin(theta);
+        
+        // Normal pointing outward
+        nx = Math.cos(theta);
+        nz = Math.sin(theta);
+      } else {
+        // For square, calculate the x,z coordinates of the corners and edges
+        const segmentPos = i % radialSegments;
+        const halfWidth = diameter / 2;
+        
+        if (segmentPos === 0) {
+          outerX = halfWidth;
+          outerZ = halfWidth;
+          nx = 1 / Math.sqrt(2);  // Normalize for corner
+          nz = 1 / Math.sqrt(2);
+        } else if (segmentPos === 1) {
+          outerX = -halfWidth;
+          outerZ = halfWidth;
+          nx = -1 / Math.sqrt(2);
+          nz = 1 / Math.sqrt(2);
+        } else if (segmentPos === 2) {
+          outerX = -halfWidth;
+          outerZ = -halfWidth;
+          nx = -1 / Math.sqrt(2);
+          nz = -1 / Math.sqrt(2);
+        } else if (segmentPos === 3) {
+          outerX = halfWidth;
+          outerZ = -halfWidth;
+          nx = 1 / Math.sqrt(2);
+          nz = -1 / Math.sqrt(2);
+        } else {
+          outerX = halfWidth;
+          outerZ = halfWidth;
+          nx = 1 / Math.sqrt(2);
+          nz = 1 / Math.sqrt(2);
         }
       }
       
-      const outerRadius = diameter / 2 + patternOffset;
-      
-      // Outer wall vertex
-      const xOuter = outerRadius * Math.cos(theta);
-      const zOuter = outerRadius * Math.sin(theta);
-      vertices.push(xOuter, yPos, zOuter);
-      
-      // Normal pointing outward
-      const nx = Math.cos(theta);
-      const nz = Math.sin(theta);
+      // Add outer vertex
+      vertices.push(outerX, yPos, outerZ);
       normals.push(nx, 0, nz);
       
       // Inner wall vertex
-      const xInner = innerDiameter / 2 * Math.cos(theta);
-      const zInner = innerDiameter / 2 * Math.sin(theta);
-      vertices.push(xInner, yPos, zInner);
+      let innerX, innerZ;
+      if (shape === 'circle') {
+        const theta = (i / radialSegments) * Math.PI * 2;
+        innerX = innerDiameter / 2 * Math.cos(theta);
+        innerZ = innerDiameter / 2 * Math.sin(theta);
+      } else {
+        const segmentPos = i % radialSegments;
+        const innerHalfWidth = (diameter - 2 * wallThickness) / 2;
+        
+        if (segmentPos === 0) {
+          innerX = innerHalfWidth;
+          innerZ = innerHalfWidth;
+        } else if (segmentPos === 1) {
+          innerX = -innerHalfWidth;
+          innerZ = innerHalfWidth;
+        } else if (segmentPos === 2) {
+          innerX = -innerHalfWidth;
+          innerZ = -innerHalfWidth;
+        } else if (segmentPos === 3) {
+          innerX = innerHalfWidth;
+          innerZ = -innerHalfWidth;
+        } else {
+          innerX = innerHalfWidth;
+          innerZ = innerHalfWidth;
+        }
+      }
+      
+      vertices.push(innerX, yPos, innerZ);
       
       // Normal pointing inward
       normals.push(-nx, 0, -nz);
@@ -2085,7 +2137,7 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
   for (let y = 0; y < heightSegments; y++) {
     for (let i = 0; i < radialSegments; i++) {
       const current = baseVertexCount + y * verticesPerRow + i * 2;
-      const next = baseVertexCount + y * verticesPerRow + (i + 1) * 2;
+      const next = baseVertexCount + y * verticesPerRow + ((i + 1) % (radialSegments + 1)) * 2;
       const currentTop = current + verticesPerRow;
       const nextTop = next + verticesPerRow;
       
@@ -2108,7 +2160,7 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
   
   for (let i = 0; i < radialSegments; i++) {
     const current = baseVertexCount + heightSegments * verticesPerRow + i * 2;
-    const next = baseVertexCount + heightSegments * verticesPerRow + (i + 1) * 2;
+    const next = baseVertexCount + heightSegments * verticesPerRow + ((i + 1) % (radialSegments + 1)) * 2;
     
     // Connect outer and inner wall at the top
     indices.push(
@@ -2117,73 +2169,171 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
     );
   }
   
-  // Add a center divider if requested
-  if (hasDivider) {
-    const dividerStart = vertices.length / 3;
+  // Add inner bottom surface for a watertight model
+  // This creates the "floor" of the pencil holder
+  const floorCenterIndex = vertices.length / 3;
+  vertices.push(0, bottomY, 0);  // Center point of the floor
+  normals.push(0, 1, 0);  // Normal points up for inner floor
+  
+  // Inner floor vertices follow the inner wall profile
+  const floorBaseIndex = vertices.length / 3;
+  for (let i = 0; i <= radialSegments; i++) {
+    let innerX, innerZ;
+    if (shape === 'circle') {
+      const theta = (i / radialSegments) * Math.PI * 2;
+      innerX = innerDiameter / 2 * Math.cos(theta);
+      innerZ = innerDiameter / 2 * Math.sin(theta);
+    } else {
+      const segmentPos = i % radialSegments;
+      const innerHalfWidth = (diameter - 2 * wallThickness) / 2;
+      
+      if (segmentPos === 0) {
+        innerX = innerHalfWidth;
+        innerZ = innerHalfWidth;
+      } else if (segmentPos === 1) {
+        innerX = -innerHalfWidth;
+        innerZ = innerHalfWidth;
+      } else if (segmentPos === 2) {
+        innerX = -innerHalfWidth;
+        innerZ = -innerHalfWidth;
+      } else if (segmentPos === 3) {
+        innerX = innerHalfWidth;
+        innerZ = -innerHalfWidth;
+      } else {
+        innerX = innerHalfWidth;
+        innerZ = innerHalfWidth;
+      }
+    }
+    
+    vertices.push(innerX, bottomY, innerZ);
+    normals.push(0, 1, 0);  // Normal points up for inner floor
+  }
+  
+  // Inner floor indices (triangles radiating from center)
+  for (let i = 0; i < radialSegments; i++) {
+    indices.push(
+      floorCenterIndex,
+      floorBaseIndex + i,
+      floorBaseIndex + (i + 1) % (radialSegments + 1)
+    );
+  }
+  
+  // Add dividers based on the divider type
+  if (dividerType !== 'none') {
     const dividerThickness = wallThickness / 2;
     
-    // Add vertices for the divider (a rectangular wall through the center)
-    // Bottom vertices
-    vertices.push(-innerDiameter/2, bottomY, 0);
-    normals.push(0, 0, 1);
+    if (dividerType === 'single') {
+      // Single divider down the middle
+      addDivider(-innerDiameter/2, 0, innerDiameter/2, 0, dividerThickness, height, bottomY);
+    } 
+    else if (dividerType === 'cross') {
+      // Cross divider (two perpendicular dividers)
+      addDivider(-innerDiameter/2, 0, innerDiameter/2, 0, dividerThickness, height, bottomY);
+      addDivider(0, -innerDiameter/2, 0, innerDiameter/2, dividerThickness, height, bottomY);
+    }
+    else if (dividerType === 'grid') {
+      // Grid divider with configurable number of cells
+      const cellSize = innerDiameter / dividerCount;
+      
+      // Horizontal dividers - span the full width
+      for (let i = 1; i < dividerCount; i++) {
+        const zOffset = -innerDiameter/2 + i * cellSize;
+        addDivider(-innerDiameter/2, zOffset, innerDiameter/2, zOffset, dividerThickness, height, bottomY);
+      }
+      
+      // Vertical dividers - span the full height
+      for (let i = 1; i < dividerCount; i++) {
+        const xOffset = -innerDiameter/2 + i * cellSize;
+        addDivider(xOffset, -innerDiameter/2, xOffset, innerDiameter/2, dividerThickness, height, bottomY);
+      }
+    }
+  }
+  
+  // Helper function to add a divider
+  function addDivider(x1: number, z1: number, x2: number, z2: number, thickness: number, height: number, bottomY: number) {
+    const dividerStart = vertices.length / 3;
+    const halfThickness = thickness / 2;
     
-    vertices.push(innerDiameter/2, bottomY, 0);
-    normals.push(0, 0, 1);
+    // Direction vector of the divider
+    const dx = x2 - x1;
+    const dz = z2 - z1;
     
-    vertices.push(-innerDiameter/2, bottomY, dividerThickness);
-    normals.push(0, 0, -1);
+    // Normalize direction
+    const length = Math.sqrt(dx * dx + dz * dz);
+    const ndx = dx / length;
+    const ndz = dz / length;
     
-    vertices.push(innerDiameter/2, bottomY, dividerThickness);
-    normals.push(0, 0, -1);
+    // Perpendicular vector for thickness
+    const perpX = -ndz;
+    const perpZ = ndx;
     
-    // Top vertices
-    vertices.push(-innerDiameter/2, topY, 0);
-    normals.push(0, 0, 1);
+    // Calculate the four corners of the divider (bottom face)
+    const corners = [
+      // Bottom face corners
+      [x1 + perpX * halfThickness, bottomY, z1 + perpZ * halfThickness],
+      [x2 + perpX * halfThickness, bottomY, z2 + perpZ * halfThickness],
+      [x2 - perpX * halfThickness, bottomY, z2 - perpZ * halfThickness],
+      [x1 - perpX * halfThickness, bottomY, z1 - perpZ * halfThickness],
+      // Top face corners
+      [x1 + perpX * halfThickness, bottomY + height, z1 + perpZ * halfThickness],
+      [x2 + perpX * halfThickness, bottomY + height, z2 + perpZ * halfThickness],
+      [x2 - perpX * halfThickness, bottomY + height, z2 - perpZ * halfThickness],
+      [x1 - perpX * halfThickness, bottomY + height, z1 - perpZ * halfThickness]
+    ];
     
-    vertices.push(innerDiameter/2, topY, 0);
-    normals.push(0, 0, 1);
+    // Add all vertices
+    for (const [x, y, z] of corners) {
+      vertices.push(x, y, z);
+    }
     
-    vertices.push(-innerDiameter/2, topY, dividerThickness);
-    normals.push(0, 0, -1);
+    // Add normals for each vertex
+    // Front face normals
+    normals.push(perpX, 0, perpZ);
+    normals.push(perpX, 0, perpZ);
+    // Back face normals
+    normals.push(-perpX, 0, -perpZ);
+    normals.push(-perpX, 0, -perpZ);
+    // Top face normals - same for all vertices
+    normals.push(perpX, 0, perpZ);
+    normals.push(perpX, 0, perpZ);
+    normals.push(-perpX, 0, -perpZ);
+    normals.push(-perpX, 0, -perpZ);
     
-    vertices.push(innerDiameter/2, topY, dividerThickness);
-    normals.push(0, 0, -1);
-    
-    // Divider indices (6 faces, 2 triangles each)
+    // Add indices for all faces
     // Front face
     indices.push(
-      dividerStart, dividerStart+1, dividerStart+4,
-      dividerStart+1, dividerStart+5, dividerStart+4
+      dividerStart, dividerStart + 1, dividerStart + 4,
+      dividerStart + 1, dividerStart + 5, dividerStart + 4
     );
     
     // Back face
     indices.push(
-      dividerStart+2, dividerStart+6, dividerStart+3,
-      dividerStart+3, dividerStart+6, dividerStart+7
+      dividerStart + 2, dividerStart + 6, dividerStart + 3,
+      dividerStart + 3, dividerStart + 6, dividerStart + 7
     );
     
     // Top face
     indices.push(
-      dividerStart+4, dividerStart+5, dividerStart+6,
-      dividerStart+5, dividerStart+7, dividerStart+6
+      dividerStart + 4, dividerStart + 5, dividerStart + 6,
+      dividerStart + 4, dividerStart + 6, dividerStart + 7
     );
     
     // Bottom face
     indices.push(
-      dividerStart, dividerStart+2, dividerStart+1,
-      dividerStart+1, dividerStart+2, dividerStart+3
+      dividerStart, dividerStart + 3, dividerStart + 2,
+      dividerStart, dividerStart + 2, dividerStart + 1
     );
     
-    // Left face
+    // End face 1
     indices.push(
-      dividerStart, dividerStart+4, dividerStart+2,
-      dividerStart+2, dividerStart+4, dividerStart+6
+      dividerStart, dividerStart + 4, dividerStart + 7,
+      dividerStart, dividerStart + 7, dividerStart + 3
     );
     
-    // Right face
+    // End face 2
     indices.push(
-      dividerStart+1, dividerStart+3, dividerStart+5,
-      dividerStart+3, dividerStart+7, dividerStart+5
+      dividerStart + 1, dividerStart + 2, dividerStart + 6,
+      dividerStart + 1, dividerStart + 6, dividerStart + 5
     );
   }
   
@@ -2417,16 +2567,19 @@ export default function Component() {
           cableOpening: value === 'true'
         } as ShapeParams;
       }
-      // Handle hasDivider separately to convert string to boolean
-      if (paramId === 'hasDivider') {
+      
+      // Handle dividerType separately
+      if (paramId === 'dividerType') {
         return {
           ...prev,
-          hasDivider: value === 'true' || value === 'yes'
+          dividerType: value as PencilHolderParams['dividerType']
         } as ShapeParams;
       }
+
+      // Safe casting to update dynamic params
       return {
-      ...prev,
-      [paramId]: value,
+        ...prev,
+        [paramId]: value,
       } as ShapeParams
     })
     setKey((k) => k + 1)
@@ -2559,7 +2712,7 @@ export default function Component() {
                   </Select>
                 </div>
 
-                {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet' || shapeParams.type === 'pencilHolder') && (
+                {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet') && (
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">Pattern Type</Label>
                     <Select 
@@ -2568,7 +2721,6 @@ export default function Component() {
                         shapeParams.type === 'wallArt' ? shapeParams.patternType :
                         shapeParams.type === 'candleHolder' ? shapeParams.patternType :
                         shapeParams.type === 'bracelet' ? shapeParams.patternType :
-                        shapeParams.type === 'pencilHolder' ? shapeParams.patternType :
                         undefined
                       }
                       onValueChange={(value) => updateParam("patternType", value)}
@@ -2579,45 +2731,37 @@ export default function Component() {
                       <SelectContent className="bg-zinc-900 border-zinc-700">
                         {shapeParams.type === 'coaster' && (
                           <>
-                            <SelectItem value="hexagonal" className="text-white hover:bg-zinc-800">Hexagonal</SelectItem>
-                            <SelectItem value="spiral" className="text-white hover:bg-zinc-800">Spiral</SelectItem>
-                            <SelectItem value="concentric" className="text-white hover:bg-zinc-800">Concentric</SelectItem>
-                            <SelectItem value="floral" className="text-white hover:bg-zinc-800">Floral</SelectItem>
-                            <SelectItem value="ripple" className="text-white hover:bg-zinc-800">Ripple</SelectItem>
-                            <SelectItem value="maze" className="text-white hover:bg-zinc-800">Maze</SelectItem>
+                            <SelectItem value="hexagonal">Hexagonal</SelectItem>
+                            <SelectItem value="spiral">Spiral</SelectItem>
+                            <SelectItem value="concentric">Concentric</SelectItem>
+                            <SelectItem value="floral">Floral</SelectItem>
+                            <SelectItem value="ripple">Ripple</SelectItem>
+                            <SelectItem value="maze">Maze</SelectItem>
                           </>
                         )}
                         {shapeParams.type === 'wallArt' && (
                           <>
-                            <SelectItem value="mandala" className="text-white hover:bg-zinc-800">Mandala</SelectItem>
-                            <SelectItem value="wave" className="text-white hover:bg-zinc-800">Wave</SelectItem>
-                            <SelectItem value="honeycomb" className="text-white hover:bg-zinc-800">Honeycomb</SelectItem>
-                            <SelectItem value="circuit" className="text-white hover:bg-zinc-800">Circuit</SelectItem>
-                            <SelectItem value="organic" className="text-white hover:bg-zinc-800">Organic</SelectItem>
+                            <SelectItem value="mandala">Mandala</SelectItem>
+                            <SelectItem value="wave">Wave</SelectItem>
+                            <SelectItem value="honeycomb">Honeycomb</SelectItem>
+                            <SelectItem value="circuit">Circuit</SelectItem>
+                            <SelectItem value="organic">Organic</SelectItem>
                           </>
                         )}
                         {shapeParams.type === 'candleHolder' && (
                           <>
-                            <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric Lines</SelectItem>
-                            <SelectItem value="stars" className="text-white hover:bg-zinc-800">Diamond Grid</SelectItem>
-                            <SelectItem value="leaves" className="text-white hover:bg-zinc-800">Wave Texture</SelectItem>
-                            <SelectItem value="abstract" className="text-white hover:bg-zinc-800">Dotted</SelectItem>
+                            <SelectItem value="geometric">Geometric</SelectItem>
+                            <SelectItem value="stars">Stars</SelectItem>
+                            <SelectItem value="leaves">Leaves</SelectItem>
+                            <SelectItem value="abstract">Abstract</SelectItem>
                           </>
                         )}
                         {shapeParams.type === 'bracelet' && (
                           <>
-                            <SelectItem value="plain" className="text-white hover:bg-zinc-800">Plain</SelectItem>
-                            <SelectItem value="waves" className="text-white hover:bg-zinc-800">Waves</SelectItem>
-                            <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
-                            <SelectItem value="organic" className="text-white hover:bg-zinc-800">Organic</SelectItem>
-                          </>
-                        )}
-                        {shapeParams.type === 'pencilHolder' && (
-                          <>
-                            <SelectItem value="plain" className="text-white hover:bg-zinc-800">Plain</SelectItem>
-                            <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
-                            <SelectItem value="fluted" className="text-white hover:bg-zinc-800">Fluted</SelectItem>
-                            <SelectItem value="honeycomb" className="text-white hover:bg-zinc-800">Honeycomb</SelectItem>
+                            <SelectItem value="plain">Plain</SelectItem>
+                            <SelectItem value="waves">Waves</SelectItem>
+                            <SelectItem value="geometric">Geometric</SelectItem>
+                            <SelectItem value="organic">Organic</SelectItem>
                           </>
                         )}
                       </SelectContent>
@@ -2704,6 +2848,44 @@ export default function Component() {
                     />
                   </div>
                 ))}
+
+                {shapeParams.type === 'pencilHolder' && (
+                  <>
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Shape</Label>
+                      <Select 
+                        value={(shapeParams as PencilHolderParams).shape}
+                        onValueChange={(value) => updateParam("shape", value)}
+                      >
+                        <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="circle" className="text-white hover:bg-zinc-800">Circle</SelectItem>
+                          <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Divider Type</Label>
+                      <Select 
+                        value={(shapeParams as PencilHolderParams).dividerType}
+                        onValueChange={(value) => updateParam("dividerType", value)}
+                      >
+                        <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="none" className="text-white hover:bg-zinc-800">None</SelectItem>
+                          <SelectItem value="single" className="text-white hover:bg-zinc-800">Single</SelectItem>
+                          <SelectItem value="cross" className="text-white hover:bg-zinc-800">Cross</SelectItem>
+                          <SelectItem value="grid" className="text-white hover:bg-zinc-800">Grid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
