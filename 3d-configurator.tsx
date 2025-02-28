@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, Suspense, useCallback } from "react"
+import { useState, useRef, Suspense, useCallback, useEffect } from "react"
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, Environment, MeshTransmissionMaterial, Center } from "@react-three/drei"
 import { Slider } from "@/components/ui/slider"
@@ -280,6 +280,60 @@ const categories: Record<string, CategoryInfo> = {
       standThickness: 0.8, // Default thickness of 0.8 inches (thicker than before)
     }
   },
+  bracelet: {
+    name: "Bracelet",
+    description: "A customizable bracelet with opening for your wrist.",
+    priceInfo: {
+      small: {
+        dimensions: "2.5 x 0.25 x 0.3 in",
+        price: 19.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "2.8 x 0.3 x 0.4 in",
+        price: 24.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'bracelet',
+      material: 'shiny',
+      innerDiameter: 2.5,
+      thickness: 0.25,
+      width: 0.3,
+      gapSize: 40, // 40 degrees opening
+      patternType: 'plain',
+      patternDepth: 0.1,
+      patternScale: 0.5
+    }
+  },
+  pencilHolder: {
+    name: "Pencil Holder",
+    description: "A customizable container for pens, pencils, and stationery.",
+    priceInfo: {
+      small: {
+        dimensions: "3 x 3 x 3.5 in",
+        price: 19.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "3.5 x 3.5 x 4 in",
+        price: 24.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'pencilHolder',
+      material: 'shiny',
+      height: 3.5,
+      diameter: 3,
+      wallThickness: 0.2,
+      patternType: 'plain',
+      patternDepth: 0.1,
+      patternScale: 0.5,
+      hasDivider: false
+    }
+  },
 } as const
 
 const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams) => {
@@ -343,6 +397,23 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
         { id: "phoneThickness" as const, label: "Phone Slot Width (in)", min: 0.3, max: 1.5, step: 0.05 },
         { id: "lipHeight" as const, label: "Lip Height (in)", min: 0.5, max: 2.5, step: 0.1 },
         { id: "standThickness" as const, label: "Stand Thickness (in)", min: 0.4, max: 2.0, step: 0.1 }
+      ] as const
+    case 'bracelet':
+      return [
+        { id: "innerDiameter" as const, label: "Inner Diameter (in)", min: 2.2, max: 3.2, step: 0.1 },
+        { id: "thickness" as const, label: "Thickness (in)", min: 0.15, max: 0.4, step: 0.05 },
+        { id: "width" as const, label: "Width (in)", min: 0.2, max: 0.6, step: 0.05 },
+        { id: "gapSize" as const, label: "Opening Size", min: 20, max: 60, step: 5 },
+        { id: "patternDepth" as const, label: "Pattern Depth", min: 0, max: 0.15, step: 0.01 },
+        { id: "patternScale" as const, label: "Pattern Scale", min: 0.2, max: 2, step: 0.1 }
+      ] as const
+    case 'pencilHolder':
+      return [
+        { id: "height" as const, label: "Height (in)", min: 2, max: 6, step: 0.25 },
+        { id: "diameter" as const, label: "Diameter (in)", min: 2, max: 5, step: 0.25 },
+        { id: "wallThickness" as const, label: "Wall Thickness (in)", min: 0.1, max: 0.4, step: 0.05 },
+        { id: "patternDepth" as const, label: "Pattern Depth", min: 0, max: 0.15, step: 0.01 },
+        { id: "patternScale" as const, label: "Pattern Scale", min: 0.2, max: 2, step: 0.1 }
       ] as const
   }
 }
@@ -475,7 +546,29 @@ interface PhoneHolderParams extends BaseShapeParams {
   standThickness: number; // New parameter for controlling the angled part thickness
 }
 
-type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams
+interface BraceletParams extends BaseShapeParams {
+  type: 'bracelet';
+  innerDiameter: number; // Inner diameter in inches
+  thickness: number; // Thickness in inches
+  width: number; // Width in inches
+  gapSize: number; // Size of the opening gap in degrees (0-180)
+  patternType: 'plain' | 'waves' | 'geometric' | 'organic';
+  patternDepth: number; // How deep the pattern goes
+  patternScale: number; // Scale of the pattern
+}
+
+interface PencilHolderParams extends BaseShapeParams {
+  type: 'pencilHolder';
+  height: number; // Height in inches
+  diameter: number; // Outer diameter in inches
+  wallThickness: number; // Wall thickness in inches
+  patternType: 'plain' | 'geometric' | 'fluted' | 'honeycomb';
+  patternDepth: number; // How deep the pattern goes
+  patternScale: number; // Scale of the pattern
+  hasDivider: boolean; // Whether to include a center divider
+}
+
+type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams
 
 interface ParametricShapeProps {
   params: ShapeParams
@@ -1657,6 +1750,446 @@ function generatePhoneHolderGeometry(params: PhoneHolderParams) {
   return { vertices, indices, normals };
 }
 
+function generateBraceletGeometry(params: BraceletParams) {
+  const {
+    innerDiameter: innerDiameterInches,
+    thickness: thicknessInches,
+    width: widthInches,
+    gapSize,
+    patternType,
+    patternDepth: patternDepthValue,
+    patternScale: patternScaleValue
+  } = params;
+  
+  // Convert to cm
+  const innerDiameter = inchesToCm(innerDiameterInches);
+  const thickness = inchesToCm(thicknessInches);
+  const width = inchesToCm(widthInches);
+  const patternDepth = inchesToCm(patternDepthValue);
+  
+  // Calculate outer diameter
+  const outerDiameter = innerDiameter + 2 * thickness;
+  
+  // Number of segments for the circle (excluding the gap)
+  const fullCircleSegments = 64;
+  
+  // Calculate the actual number of segments based on the gap size
+  const gapAngle = (gapSize * Math.PI) / 180; // Convert gap size from degrees to radians
+  const segmentAngle = (2 * Math.PI) / fullCircleSegments;
+  const actualSegments = Math.floor(fullCircleSegments * (1 - gapSize / 360));
+  
+  // Arrays for vertices, indices, and normals
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const normals: number[] = [];
+  
+  // Function to create a point on a circle at given angle
+  const createCirclePoint = (diameter: number, angle: number, y: number) => {
+    const radius = diameter / 2;
+    const x = radius * Math.cos(angle);
+    const z = radius * Math.sin(angle);
+    return [x, y, z];
+  };
+  
+  // The starting angle of the C-shape (half of the gap on each side)
+  const startAngle = gapAngle / 2;
+  const endAngle = 2 * Math.PI - gapAngle / 2;
+  
+  // Generate the top face
+  for (let i = 0; i <= actualSegments; i++) {
+    // Calculate the current angle, interpolating from start to end
+    const t = i / actualSegments;
+    const angle = startAngle + t * (endAngle - startAngle);
+    
+    // Add pattern to the outer edge
+    let patternOffset = 0;
+    if (patternType !== 'plain' && patternDepth > 0) {
+      const patternScale = patternScaleValue * 5; // Scale factor for pattern
+      
+      switch (patternType) {
+        case 'waves':
+          patternOffset = patternDepth * Math.sin(angle * patternScale);
+          break;
+        case 'geometric':
+          patternOffset = patternDepth * Math.abs(Math.sin(angle * patternScale));
+          break;
+        case 'organic':
+          // A more random looking pattern
+          patternOffset = patternDepth * (
+            Math.sin(angle * patternScale) * 0.6 + 
+            Math.sin(angle * patternScale * 2.7) * 0.3 + 
+            Math.sin(angle * patternScale * 5.1) * 0.1
+          );
+          break;
+      }
+    }
+    
+    // Inner circle points (top face)
+    const [innerX, innerY, innerZ] = createCirclePoint(innerDiameter, angle, width / 2);
+    vertices.push(innerX, innerY, innerZ);
+    normals.push(0, 1, 0); // Top face normal
+    
+    // Outer circle points (top face)
+    // Apply pattern to the outer diameter
+    const actualOuterDiameter = outerDiameter + patternOffset * 2;
+    const [outerX, outerY, outerZ] = createCirclePoint(actualOuterDiameter, angle, width / 2);
+    vertices.push(outerX, outerY, outerZ);
+    normals.push(0, 1, 0); // Top face normal
+  }
+  
+  // Generate the bottom face
+  for (let i = 0; i <= actualSegments; i++) {
+    // Calculate the current angle, interpolating from start to end
+    const t = i / actualSegments;
+    const angle = startAngle + t * (endAngle - startAngle);
+    
+    // Add pattern to the outer edge (same as top face for consistency)
+    let patternOffset = 0;
+    if (patternType !== 'plain' && patternDepth > 0) {
+      const patternScale = patternScaleValue * 5;
+      
+      switch (patternType) {
+        case 'waves':
+          patternOffset = patternDepth * Math.sin(angle * patternScale);
+          break;
+        case 'geometric':
+          patternOffset = patternDepth * Math.abs(Math.sin(angle * patternScale));
+          break;
+        case 'organic':
+          patternOffset = patternDepth * (
+            Math.sin(angle * patternScale) * 0.6 + 
+            Math.sin(angle * patternScale * 2.7) * 0.3 + 
+            Math.sin(angle * patternScale * 5.1) * 0.1
+          );
+          break;
+      }
+    }
+    
+    // Inner circle points (bottom face)
+    const [innerX, innerY, innerZ] = createCirclePoint(innerDiameter, angle, -width / 2);
+    vertices.push(innerX, innerY, innerZ);
+    normals.push(0, -1, 0); // Bottom face normal
+    
+    // Outer circle points (bottom face)
+    const actualOuterDiameter = outerDiameter + patternOffset * 2;
+    const [outerX, outerY, outerZ] = createCirclePoint(actualOuterDiameter, angle, -width / 2);
+    vertices.push(outerX, outerY, outerZ);
+    normals.push(0, -1, 0); // Bottom face normal
+  }
+  
+  // Create indices for the top and bottom faces
+  for (let i = 0; i < actualSegments; i++) {
+    // Top face indices (0 to segments*2-1)
+    const topInnerCurrent = i * 2;
+    const topOuterCurrent = i * 2 + 1;
+    const topInnerNext = (i + 1) * 2;
+    const topOuterNext = (i + 1) * 2 + 1;
+    
+    // Create two triangles for the top face
+    indices.push(
+      topInnerCurrent, topOuterCurrent, topInnerNext,
+      topOuterCurrent, topOuterNext, topInnerNext
+    );
+    
+    // Bottom face indices (segments*2 to segments*4-1)
+    const bottomInnerCurrent = (actualSegments + 1) * 2 + i * 2;
+    const bottomOuterCurrent = (actualSegments + 1) * 2 + i * 2 + 1;
+    const bottomInnerNext = (actualSegments + 1) * 2 + (i + 1) * 2;
+    const bottomOuterNext = (actualSegments + 1) * 2 + (i + 1) * 2 + 1;
+    
+    // Create two triangles for the bottom face (reverse winding)
+    indices.push(
+      bottomInnerCurrent, bottomInnerNext, bottomOuterCurrent,
+      bottomOuterCurrent, bottomInnerNext, bottomOuterNext
+    );
+    
+    // Connect the top and bottom faces to create the sides
+    // Inner wall
+    indices.push(
+      topInnerCurrent, topInnerNext, bottomInnerCurrent,
+      bottomInnerCurrent, topInnerNext, bottomInnerNext
+    );
+    
+    // Outer wall (with pattern)
+    indices.push(
+      topOuterCurrent, bottomOuterCurrent, topOuterNext,
+      bottomOuterCurrent, bottomOuterNext, topOuterNext
+    );
+  }
+  
+  // Now add faces for the ends of the C shape where the gap is
+  // First end
+  const firstTopInner = 0;
+  const firstTopOuter = 1;
+  const firstBottomInner = (actualSegments + 1) * 2;
+  const firstBottomOuter = (actualSegments + 1) * 2 + 1;
+  
+  // Create triangles for the first end
+  indices.push(
+    firstTopInner, firstBottomInner, firstTopOuter,
+    firstTopOuter, firstBottomInner, firstBottomOuter
+  );
+  
+  // Second end
+  const lastTopInner = actualSegments * 2;
+  const lastTopOuter = actualSegments * 2 + 1;
+  const lastBottomInner = (actualSegments + 1) * 2 + actualSegments * 2;
+  const lastBottomOuter = (actualSegments + 1) * 2 + actualSegments * 2 + 1;
+  
+  // Create triangles for the second end
+  indices.push(
+    lastTopInner, lastTopOuter, lastBottomInner,
+    lastBottomInner, lastTopOuter, lastBottomOuter
+  );
+  
+  // Calculate improved normals for better rendering
+  // This is a simplified approach; ideally we would compute per-vertex normals
+  for (let i = 0; i <= actualSegments; i++) {
+    const t = i / actualSegments;
+    const angle = startAngle + t * (endAngle - startAngle);
+    
+    // Inner wall normals - pointing inward
+    const nx = -Math.cos(angle);
+    const nz = -Math.sin(angle);
+    
+    // For top and bottom faces, we've already set the normals correctly
+    
+    // For side walls, update the normals (this is approximate)
+    // This would ideally be more precise, but this simple approach works for our needs
+    if (i > 0 && i < actualSegments) {
+      // Update normals for side faces if needed
+    }
+  }
+  
+  return { vertices, indices, normals };
+}
+
+function generatePencilHolderGeometry(params: PencilHolderParams) {
+  const {
+    height: heightInches,
+    diameter: diameterInches,
+    wallThickness: wallThicknessInches,
+    patternType,
+    patternDepth: patternDepthValue,
+    patternScale: patternScaleValue,
+    hasDivider
+  } = params;
+  
+  // Convert to cm
+  const height = inchesToCm(heightInches);
+  const diameter = inchesToCm(diameterInches);
+  const wallThickness = inchesToCm(wallThicknessInches);
+  const patternDepth = inchesToCm(patternDepthValue);
+  
+  // Calculate inner diameter
+  const innerDiameter = diameter - 2 * wallThickness;
+  
+  // Number of segments for the circle
+  const radialSegments = 48;
+  const heightSegments = 1;
+  const baseSegments = 1;
+  
+  // Arrays for vertices, indices, and normals
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const normals: number[] = [];
+  
+  // Add base (bottom)
+  const bottomY = 0;
+  
+  // Center vertex for the base
+  vertices.push(0, bottomY, 0);
+  normals.push(0, -1, 0);
+  
+  // Base outer vertices
+  for (let i = 0; i <= radialSegments; i++) {
+    const theta = (i / radialSegments) * Math.PI * 2;
+    const x = diameter / 2 * Math.cos(theta);
+    const z = diameter / 2 * Math.sin(theta);
+    
+    vertices.push(x, bottomY, z);
+    normals.push(0, -1, 0);
+  }
+  
+  // Base indices (triangles from center to edge)
+  for (let i = 0; i < radialSegments; i++) {
+    indices.push(
+      0, // Center
+      i + 1, // Current point
+      (i + 1) % radialSegments + 1 // Next point
+    );
+  }
+  
+  // Side walls
+  const baseVertexCount = vertices.length / 3;
+  
+  // Generate vertices for outer wall
+  for (let y = 0; y <= heightSegments; y++) {
+    const yPos = bottomY + (y / heightSegments) * height;
+    
+    for (let i = 0; i <= radialSegments; i++) {
+      const theta = (i / radialSegments) * Math.PI * 2;
+      
+      // Add pattern to the outer surface
+      let patternOffset = 0;
+      if (patternType !== 'plain' && patternDepth > 0) {
+        const patternScale = patternScaleValue * 5;
+        const heightRatio = yPos / height;
+        
+        switch (patternType) {
+          case 'geometric':
+            patternOffset = patternDepth * Math.abs(Math.sin(theta * patternScale) * Math.sin(heightRatio * patternScale * 2));
+            break;
+          case 'fluted':
+            patternOffset = patternDepth * Math.abs(Math.sin(theta * patternScale));
+            break;
+          case 'honeycomb':
+            // Honeycomb-like pattern
+            const hexScale = patternScale * 10;
+            const hexY = Math.floor(heightRatio * hexScale) / hexScale;
+            const hexTheta = Math.floor(theta * hexScale) / hexScale;
+            const distFromCenter = Math.sqrt(
+              Math.pow(theta - hexTheta - 1/(hexScale*2), 2) + 
+              Math.pow(heightRatio - hexY - (Math.floor(hexTheta * hexScale) % 2 ? 0 : 1/(hexScale*2)), 2)
+            );
+            patternOffset = patternDepth * (distFromCenter < 0.5 / hexScale ? 1 : 0);
+            break;
+        }
+      }
+      
+      const outerRadius = diameter / 2 + patternOffset;
+      
+      // Outer wall vertex
+      const xOuter = outerRadius * Math.cos(theta);
+      const zOuter = outerRadius * Math.sin(theta);
+      vertices.push(xOuter, yPos, zOuter);
+      
+      // Normal pointing outward
+      const nx = Math.cos(theta);
+      const nz = Math.sin(theta);
+      normals.push(nx, 0, nz);
+      
+      // Inner wall vertex
+      const xInner = innerDiameter / 2 * Math.cos(theta);
+      const zInner = innerDiameter / 2 * Math.sin(theta);
+      vertices.push(xInner, yPos, zInner);
+      
+      // Normal pointing inward
+      normals.push(-nx, 0, -nz);
+    }
+  }
+  
+  // Create indices for the side walls
+  const verticesPerRow = (radialSegments + 1) * 2;
+  
+  for (let y = 0; y < heightSegments; y++) {
+    for (let i = 0; i < radialSegments; i++) {
+      const current = baseVertexCount + y * verticesPerRow + i * 2;
+      const next = baseVertexCount + y * verticesPerRow + (i + 1) * 2;
+      const currentTop = current + verticesPerRow;
+      const nextTop = next + verticesPerRow;
+      
+      // Outer wall (two triangles per quad)
+      indices.push(
+        current, currentTop, next,
+        next, currentTop, nextTop
+      );
+      
+      // Inner wall (two triangles per quad, reversed winding)
+      indices.push(
+        current + 1, next + 1, currentTop + 1,
+        currentTop + 1, next + 1, nextTop + 1
+      );
+    }
+  }
+  
+  // Add top rim (just the top edge, not the full top surface)
+  const topY = bottomY + height;
+  
+  for (let i = 0; i < radialSegments; i++) {
+    const current = baseVertexCount + heightSegments * verticesPerRow + i * 2;
+    const next = baseVertexCount + heightSegments * verticesPerRow + (i + 1) * 2;
+    
+    // Connect outer and inner wall at the top
+    indices.push(
+      current, next, current + 1,
+      current + 1, next, next + 1
+    );
+  }
+  
+  // Add a center divider if requested
+  if (hasDivider) {
+    const dividerStart = vertices.length / 3;
+    const dividerThickness = wallThickness / 2;
+    
+    // Add vertices for the divider (a rectangular wall through the center)
+    // Bottom vertices
+    vertices.push(-innerDiameter/2, bottomY, 0);
+    normals.push(0, 0, 1);
+    
+    vertices.push(innerDiameter/2, bottomY, 0);
+    normals.push(0, 0, 1);
+    
+    vertices.push(-innerDiameter/2, bottomY, dividerThickness);
+    normals.push(0, 0, -1);
+    
+    vertices.push(innerDiameter/2, bottomY, dividerThickness);
+    normals.push(0, 0, -1);
+    
+    // Top vertices
+    vertices.push(-innerDiameter/2, topY, 0);
+    normals.push(0, 0, 1);
+    
+    vertices.push(innerDiameter/2, topY, 0);
+    normals.push(0, 0, 1);
+    
+    vertices.push(-innerDiameter/2, topY, dividerThickness);
+    normals.push(0, 0, -1);
+    
+    vertices.push(innerDiameter/2, topY, dividerThickness);
+    normals.push(0, 0, -1);
+    
+    // Divider indices (6 faces, 2 triangles each)
+    // Front face
+    indices.push(
+      dividerStart, dividerStart+1, dividerStart+4,
+      dividerStart+1, dividerStart+5, dividerStart+4
+    );
+    
+    // Back face
+    indices.push(
+      dividerStart+2, dividerStart+6, dividerStart+3,
+      dividerStart+3, dividerStart+6, dividerStart+7
+    );
+    
+    // Top face
+    indices.push(
+      dividerStart+4, dividerStart+5, dividerStart+6,
+      dividerStart+5, dividerStart+7, dividerStart+6
+    );
+    
+    // Bottom face
+    indices.push(
+      dividerStart, dividerStart+2, dividerStart+1,
+      dividerStart+1, dividerStart+2, dividerStart+3
+    );
+    
+    // Left face
+    indices.push(
+      dividerStart, dividerStart+4, dividerStart+2,
+      dividerStart+2, dividerStart+4, dividerStart+6
+    );
+    
+    // Right face
+    indices.push(
+      dividerStart+1, dividerStart+3, dividerStart+5,
+      dividerStart+3, dividerStart+7, dividerStart+5
+    );
+  }
+  
+  return { vertices, indices, normals };
+}
+
 function ParametricShape({ params, meshRef }: ParametricShapeProps) {
   const generateGeometry = useCallback(() => {
     switch (params.type) {
@@ -1672,6 +2205,10 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
         return generateCylinderBaseGeometry(params)
       case 'phoneHolder':
         return generatePhoneHolderGeometry(params as PhoneHolderParams)
+      case 'bracelet':
+        return generateBraceletGeometry(params as BraceletParams)
+      case 'pencilHolder':
+        return generatePencilHolderGeometry(params as PencilHolderParams)
       default:
         return generateStandardGeometry(params)
     }
@@ -1880,6 +2417,13 @@ export default function Component() {
           cableOpening: value === 'true'
         } as ShapeParams;
       }
+      // Handle hasDivider separately to convert string to boolean
+      if (paramId === 'hasDivider') {
+        return {
+          ...prev,
+          hasDivider: value === 'true' || value === 'yes'
+        } as ShapeParams;
+      }
       return {
       ...prev,
       [paramId]: value,
@@ -2015,7 +2559,7 @@ export default function Component() {
                   </Select>
                 </div>
 
-                {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder') && (
+                {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet' || shapeParams.type === 'pencilHolder') && (
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">Pattern Type</Label>
                     <Select 
@@ -2023,6 +2567,8 @@ export default function Component() {
                         shapeParams.type === 'coaster' ? shapeParams.patternType :
                         shapeParams.type === 'wallArt' ? shapeParams.patternType :
                         shapeParams.type === 'candleHolder' ? shapeParams.patternType :
+                        shapeParams.type === 'bracelet' ? shapeParams.patternType :
+                        shapeParams.type === 'pencilHolder' ? shapeParams.patternType :
                         undefined
                       }
                       onValueChange={(value) => updateParam("patternType", value)}
@@ -2056,6 +2602,22 @@ export default function Component() {
                             <SelectItem value="stars" className="text-white hover:bg-zinc-800">Diamond Grid</SelectItem>
                             <SelectItem value="leaves" className="text-white hover:bg-zinc-800">Wave Texture</SelectItem>
                             <SelectItem value="abstract" className="text-white hover:bg-zinc-800">Dotted</SelectItem>
+                          </>
+                        )}
+                        {shapeParams.type === 'bracelet' && (
+                          <>
+                            <SelectItem value="plain" className="text-white hover:bg-zinc-800">Plain</SelectItem>
+                            <SelectItem value="waves" className="text-white hover:bg-zinc-800">Waves</SelectItem>
+                            <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
+                            <SelectItem value="organic" className="text-white hover:bg-zinc-800">Organic</SelectItem>
+                          </>
+                        )}
+                        {shapeParams.type === 'pencilHolder' && (
+                          <>
+                            <SelectItem value="plain" className="text-white hover:bg-zinc-800">Plain</SelectItem>
+                            <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
+                            <SelectItem value="fluted" className="text-white hover:bg-zinc-800">Fluted</SelectItem>
+                            <SelectItem value="honeycomb" className="text-white hover:bg-zinc-800">Honeycomb</SelectItem>
                           </>
                         )}
                       </SelectContent>
