@@ -403,6 +403,27 @@ const categories: Record<string, CategoryInfo> = {
       legStyle: 'minimal',
     },
   },
+  jewelryHolder: {
+    name: 'Jewelry Holder',
+    description: 'Organize and display your jewelry with our customizable holder.',
+    priceInfo: {
+      small: { dimensions: '6"W × 6"D × 6"H', price: 39.99, priceId: 'price_jewelryholder_small' },
+      medium: { dimensions: '8"W × 8"D × 8"H', price: 49.99, priceId: 'price_jewelryholder_medium' },
+    },
+    defaults: {
+      type: 'jewelryHolder',
+      material: 'shiny',
+      baseWidth: 6,
+      baseDepth: 6,
+      baseHeight: 0.75,
+      baseStyle: 'square',
+      pegHeight: 5,
+      pegDiameter: 0.4,
+      pegArrangement: 'circular',
+      pegCount: 7,
+      pegBranchStyle: 'none',
+    },
+  },
 } as const
 
 const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams) => {
@@ -500,11 +521,19 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
       ] as const
     case 'monitorStand':
       return [
-        { id: "width" as const, label: "Width (in)", min: 10.00, max: 20.00, step: 0.01 },
-        { id: "depth" as const, label: "Depth (in)", min: 6.00, max: 12.00, step: 0.01 },
-        { id: "height" as const, label: "Height (in)", min: 2.00, max: 6.00, step: 0.01 },
-        { id: "thickness" as const, label: "Thickness (in)", min: 0.50, max: 1.50, step: 0.01 },
-        { id: "patternDepth" as const, label: "Pattern Depth (in)", min: 0.00, max: 0.25, step: 0.01 }
+        { id: "width" as const, label: "Width (in)", min: 10, max: 24, step: 0.5 },
+        { id: "depth" as const, label: "Depth (in)", min: 6, max: 12, step: 0.5 },
+        { id: "height" as const, label: "Height (in)", min: 3, max: 7, step: 0.5 },
+        { id: "thickness" as const, label: "Thickness (in)", min: 0.5, max: 2, step: 0.1 },
+      ] as const
+    case 'jewelryHolder':
+      return [
+        { id: "baseWidth" as const, label: "Base Width (in)", min: 4, max: 10, step: 0.5 },
+        { id: "baseDepth" as const, label: "Base Depth (in)", min: 4, max: 10, step: 0.5 },
+        { id: "baseHeight" as const, label: "Base Height (in)", min: 0.5, max: 2, step: 0.1 },
+        { id: "pegHeight" as const, label: "Peg Height (in)", min: 2, max: 8, step: 0.5 },
+        { id: "pegDiameter" as const, label: "Peg Diameter (in)", min: 0.2, max: 1, step: 0.1 },
+        { id: "pegCount" as const, label: "Number of Pegs", min: 3, max: 15, step: 1 },
       ] as const
     default:
       return []
@@ -689,7 +718,20 @@ interface MonitorStandParams extends BaseShapeParams {
   legStyle: 'minimal' | 'solid'; // Style of the supporting legs
 }
 
-type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams | RingParams | MonitorStandParams
+interface JewelryHolderParams extends BaseShapeParams {
+  type: 'jewelryHolder';
+  baseWidth: number; // Width of the base in inches
+  baseDepth: number; // Depth of the base in inches
+  baseHeight: number; // Height of the base in inches
+  baseStyle: 'square' | 'round' | 'curved' | 'tiered'; // Style of the base
+  pegHeight: number; // Height of the jewelry pegs in inches
+  pegDiameter: number; // Diameter of the pegs in inches
+  pegArrangement: 'linear' | 'circular' | 'scattered'; // Arrangement pattern of pegs
+  pegCount: number; // Number of pegs for jewelry items
+  pegBranchStyle: 'none' | 'simple' | 'tree' | 'cross'; // Style of branches on pegs
+}
+
+type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams | RingParams | MonitorStandParams | JewelryHolderParams
 
 interface ParametricShapeProps {
   params: ShapeParams
@@ -2758,6 +2800,293 @@ function generateMonitorStandGeometry(params: MonitorStandParams) {
   return mergedGeometry;
 }
 
+function generateJewelryHolderGeometry(params: JewelryHolderParams) {
+  const {
+    baseWidth,
+    baseDepth,
+    baseHeight,
+    baseStyle,
+    pegHeight,
+    pegDiameter,
+    pegArrangement,
+    pegCount,
+    pegBranchStyle
+  } = params;
+
+  // Convert inches to centimeters
+  const baseWidthCm = inchesToCm(baseWidth);
+  const baseDepthCm = inchesToCm(baseDepth);
+  const baseHeightCm = inchesToCm(baseHeight);
+  const pegHeightCm = inchesToCm(pegHeight);
+  const pegDiameterCm = inchesToCm(pegDiameter);
+
+  // Create the base based on style
+  let baseGeometry: THREE.BufferGeometry;
+  
+  switch (baseStyle) {
+    case 'round':
+      baseGeometry = new THREE.CylinderGeometry(
+        Math.max(baseWidthCm, baseDepthCm) / 2, 
+        Math.max(baseWidthCm, baseDepthCm) / 2, 
+        baseHeightCm, 
+        32
+      );
+      baseGeometry.rotateX(Math.PI / 2);
+      break;
+      
+    case 'curved':
+      // Create a curved base with beveled edges
+      const curvedBaseWidth = baseWidthCm;
+      const curvedBaseDepth = baseDepthCm;
+      const cornerRadius = Math.min(curvedBaseWidth, curvedBaseDepth) * 0.2;
+      
+      const curvedBaseShape = new THREE.Shape();
+      curvedBaseShape.moveTo(-curvedBaseWidth / 2 + cornerRadius, -curvedBaseDepth / 2);
+      curvedBaseShape.lineTo(curvedBaseWidth / 2 - cornerRadius, -curvedBaseDepth / 2);
+      curvedBaseShape.quadraticCurveTo(curvedBaseWidth / 2, -curvedBaseDepth / 2, curvedBaseWidth / 2, -curvedBaseDepth / 2 + cornerRadius);
+      curvedBaseShape.lineTo(curvedBaseWidth / 2, curvedBaseDepth / 2 - cornerRadius);
+      curvedBaseShape.quadraticCurveTo(curvedBaseWidth / 2, curvedBaseDepth / 2, curvedBaseWidth / 2 - cornerRadius, curvedBaseDepth / 2);
+      curvedBaseShape.lineTo(-curvedBaseWidth / 2 + cornerRadius, curvedBaseDepth / 2);
+      curvedBaseShape.quadraticCurveTo(-curvedBaseWidth / 2, curvedBaseDepth / 2, -curvedBaseWidth / 2, curvedBaseDepth / 2 - cornerRadius);
+      curvedBaseShape.lineTo(-curvedBaseWidth / 2, -curvedBaseDepth / 2 + cornerRadius);
+      curvedBaseShape.quadraticCurveTo(-curvedBaseWidth / 2, -curvedBaseDepth / 2, -curvedBaseWidth / 2 + cornerRadius, -curvedBaseDepth / 2);
+      
+      const curvedBaseExtrudeSettings = {
+        steps: 1,
+        depth: baseHeightCm,
+        bevelEnabled: true,
+        bevelThickness: 0.2,
+        bevelSize: 0.2,
+        bevelOffset: 0,
+        bevelSegments: 3
+      };
+      
+      baseGeometry = new THREE.ExtrudeGeometry(curvedBaseShape, curvedBaseExtrudeSettings);
+      baseGeometry.rotateX(Math.PI / 2);
+      break;
+      
+    case 'tiered':
+      // Create a tiered base with multiple levels
+      const tierCount = 3;
+      const tierGeometries: THREE.BufferGeometry[] = [];
+      
+      for (let i = 0; i < tierCount; i++) {
+        const tierScale = 1 - (i * 0.2);
+        const tierWidth = baseWidthCm * tierScale;
+        const tierDepth = baseDepthCm * tierScale;
+        const tierHeight = baseHeightCm / tierCount;
+        const tierY = i * tierHeight;
+        
+        const tierGeometry = new THREE.BoxGeometry(tierWidth, tierHeight, tierDepth);
+        tierGeometry.translate(0, tierY + tierHeight / 2, 0);
+        tierGeometries.push(tierGeometry);
+      }
+      
+      baseGeometry = BufferGeometryUtils.mergeGeometries(tierGeometries);
+      break;
+      
+    case 'square':
+    default:
+      // Default square base
+      baseGeometry = new THREE.BoxGeometry(baseWidthCm, baseHeightCm, baseDepthCm);
+      baseGeometry.translate(0, baseHeightCm / 2, 0);
+      break;
+  }
+
+  // Combine all geometries
+  const geometries: THREE.BufferGeometry[] = [baseGeometry];
+  
+  // Function to create branches based on style
+  const createBranches = (pegGeometry: THREE.BufferGeometry, x: number, y: number, z: number): THREE.BufferGeometry[] => {
+    const branchGeometries: THREE.BufferGeometry[] = [pegGeometry];
+    
+    if (pegBranchStyle === 'none') {
+      return branchGeometries;
+    }
+    
+    const branchDiameter = pegDiameterCm * 0.7;  // Branch diameter slightly smaller than peg
+    const branchLength = pegDiameterCm * 3;      // Branch length relative to peg size
+    const pegRadius = pegDiameterCm / 2;         // Radius of the peg
+    
+    switch (pegBranchStyle) {
+      case 'simple':
+        // Create a single horizontal branch
+        // First, create a horizontal branch that extends from the center of the peg
+        const simpleBranch = new THREE.CylinderGeometry(
+          branchDiameter / 2,
+          branchDiameter / 2,
+          branchLength,
+          8
+        );
+        
+        // First, rotate the branch so it's horizontal (along X-axis)
+        simpleBranch.rotateZ(Math.PI / 2);
+        
+        // Move the branch so one end is at the center of the peg
+        // The cylinder is centered at origin by default, so move it by half its length
+        simpleBranch.translate(branchLength / 2, 0, 0);
+        
+        // Now create a group to handle positioning
+        const simpleBranchMesh = new THREE.Mesh(simpleBranch);
+        // Position the branch at the appropriate height on the peg
+        simpleBranchMesh.position.set(0, pegHeightCm * 0.7, 0);
+        
+        // Create a new geometry from the transformed mesh
+        const simpleBranchGeometry = simpleBranchMesh.geometry.clone();
+        simpleBranchGeometry.applyMatrix4(simpleBranchMesh.matrix);
+        
+        // Finally, translate the entire branch to the peg's position
+        simpleBranchGeometry.translate(x, y, z);
+        
+        branchGeometries.push(simpleBranchGeometry);
+        break;
+        
+      case 'tree':
+        // Create multiple branches at different heights and angles
+        const branchCount = 3;
+        for (let i = 0; i < branchCount; i++) {
+          const branchHeight = pegHeightCm * (0.4 + i * 0.2);
+          const angle = (i / branchCount) * Math.PI * 2;
+          
+          const treeBranch = new THREE.CylinderGeometry(
+            branchDiameter / 2,
+            branchDiameter / 2,
+            branchLength,
+            8
+          );
+          
+          // First, rotate the branch to be horizontal
+          treeBranch.rotateZ(Math.PI / 2);
+          
+          // Move the branch so one end is at the origin
+          treeBranch.translate(branchLength / 2, 0, 0);
+          
+          // Create a mesh to handle complex transforms
+          const treeBranchMesh = new THREE.Mesh(treeBranch);
+          
+          // Rotate around Y to create the tree pattern
+          treeBranchMesh.rotation.y = angle;
+          
+          // Position at the right height
+          treeBranchMesh.position.set(0, branchHeight, 0);
+          
+          // Extract the transformed geometry
+          const treeBranchGeometry = treeBranchMesh.geometry.clone();
+          treeBranchGeometry.applyMatrix4(treeBranchMesh.matrix);
+          
+          // Move to the peg's position
+          treeBranchGeometry.translate(x, y, z);
+          
+          branchGeometries.push(treeBranchGeometry);
+        }
+        break;
+        
+      case 'cross':
+        // Create two perpendicular branches forming a cross
+        for (let i = 0; i < 2; i++) {
+          const angle = i * Math.PI / 2;
+          
+          const crossBranch = new THREE.CylinderGeometry(
+            branchDiameter / 2,
+            branchDiameter / 2,
+            branchLength,
+            8
+          );
+          
+          // First, rotate the branch to be horizontal
+          crossBranch.rotateZ(Math.PI / 2);
+          
+          // Move the branch so one end is at the origin
+          crossBranch.translate(branchLength / 2, 0, 0);
+          
+          // Create a mesh to handle complex transforms
+          const crossBranchMesh = new THREE.Mesh(crossBranch);
+          
+          // Rotate around Y to create the cross pattern
+          crossBranchMesh.rotation.y = angle;
+          
+          // Position at a fixed height on the peg
+          crossBranchMesh.position.set(0, pegHeightCm * 0.7, 0);
+          
+          // Extract the transformed geometry
+          const crossBranchGeometry = crossBranchMesh.geometry.clone();
+          crossBranchGeometry.applyMatrix4(crossBranchMesh.matrix);
+          
+          // Move to the peg's position
+          crossBranchGeometry.translate(x, y, z);
+          
+          branchGeometries.push(crossBranchGeometry);
+        }
+        break;
+    }
+    
+    return branchGeometries;
+  };
+  
+  // Create a peg template
+  const pegGeometry = new THREE.CylinderGeometry(pegDiameterCm / 2, pegDiameterCm / 2, pegHeightCm, 8);
+  
+  // Generate pegs based on arrangement
+  switch (pegArrangement) {
+    case 'linear':
+      // Place pegs in a line across the center of the base
+      const lineSpacing = baseWidthCm / (pegCount + 1);
+      for (let i = 1; i <= pegCount; i++) {
+        const x = -baseWidthCm / 2 + i * lineSpacing;
+        const y = baseHeightCm + pegHeightCm / 2;
+        const z = 0;
+        
+        const pegInstance = pegGeometry.clone();
+        pegInstance.translate(x, y, z);
+        
+        // Add branches to the peg
+        const branches = createBranches(pegInstance, x, y, z);
+        geometries.push(...branches);
+      }
+      break;
+      
+    case 'circular':
+      // Place pegs in a circle on the base
+      const radius = Math.min(baseWidthCm, baseDepthCm) * 0.4;
+      for (let i = 0; i < pegCount; i++) {
+        const angle = (i / pegCount) * Math.PI * 2;
+        const x = Math.cos(angle) * radius;
+        const y = baseHeightCm + pegHeightCm / 2;
+        const z = Math.sin(angle) * radius;
+        
+        const pegInstance = pegGeometry.clone();
+        pegInstance.translate(x, y, z);
+        
+        // Add branches to the peg
+        const branches = createBranches(pegInstance, x, y, z);
+        geometries.push(...branches);
+      }
+      break;
+      
+    case 'scattered':
+      // Place pegs randomly on the base
+      for (let i = 0; i < pegCount; i++) {
+        // Random position, but keep away from edges
+        const x = (Math.random() - 0.5) * (baseWidthCm - pegDiameterCm);
+        const y = baseHeightCm + pegHeightCm / 2;
+        const z = (Math.random() - 0.5) * (baseDepthCm - pegDiameterCm);
+        
+        const pegInstance = pegGeometry.clone();
+        pegInstance.translate(x, y, z);
+        
+        // Add branches to the peg
+        const branches = createBranches(pegInstance, x, y, z);
+        geometries.push(...branches);
+      }
+      break;
+  }
+
+  // Merge all geometries
+  const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
+  
+  return mergedGeometry;
+}
+
 function ParametricShape({ params, meshRef }: ParametricShapeProps) {
   const geometry = useMemo(() => {
     const params_ = cloneDeep(params)
@@ -2786,6 +3115,8 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
         return generateRingGeometry(params_ as RingParams)
       case 'monitorStand':
         return generateMonitorStandGeometry(params_ as MonitorStandParams)
+      case 'jewelryHolder':
+        return generateJewelryHolderGeometry(params_ as JewelryHolderParams)
       default:
         return generateStandardGeometry(params_ as StandardShapeParams)
     }
@@ -3391,6 +3722,69 @@ export default function Component() {
                         <SelectContent className="bg-zinc-900 border-zinc-700">
                           <SelectItem value="minimal" className="text-white hover:bg-zinc-800">Minimal</SelectItem>
                           <SelectItem value="solid" className="text-white hover:bg-zinc-800">Solid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
+
+                {shapeParams.type === 'jewelryHolder' && (
+                  <>
+                    <div className="flex flex-col space-y-2">
+                      <Label className="text-white">Base Style</Label>
+                      <Select
+                        value={(shapeParams as JewelryHolderParams).baseStyle}
+                        onValueChange={(value) => {
+                          updateParam("baseStyle", value);
+                        }}
+                      >
+                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                          <SelectValue placeholder="Select base style" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
+                          <SelectItem value="round" className="text-white hover:bg-zinc-800">Round</SelectItem>
+                          <SelectItem value="curved" className="text-white hover:bg-zinc-800">Curved</SelectItem>
+                          <SelectItem value="tiered" className="text-white hover:bg-zinc-800">Tiered</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col space-y-2">
+                      <Label className="text-white">Peg Arrangement</Label>
+                      <Select
+                        value={(shapeParams as JewelryHolderParams).pegArrangement}
+                        onValueChange={(value) => {
+                          updateParam("pegArrangement", value);
+                        }}
+                      >
+                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                          <SelectValue placeholder="Select peg arrangement" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="linear" className="text-white hover:bg-zinc-800">Linear</SelectItem>
+                          <SelectItem value="circular" className="text-white hover:bg-zinc-800">Circular</SelectItem>
+                          <SelectItem value="scattered" className="text-white hover:bg-zinc-800">Scattered</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex flex-col space-y-2">
+                      <Label className="text-white">Peg Branch Style</Label>
+                      <Select
+                        value={(shapeParams as JewelryHolderParams).pegBranchStyle}
+                        onValueChange={(value) => {
+                          updateParam("pegBranchStyle", value);
+                        }}
+                      >
+                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                          <SelectValue placeholder="Select branch style" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="none" className="text-white hover:bg-zinc-800">None</SelectItem>
+                          <SelectItem value="simple" className="text-white hover:bg-zinc-800">Simple</SelectItem>
+                          <SelectItem value="tree" className="text-white hover:bg-zinc-800">Tree</SelectItem>
+                          <SelectItem value="cross" className="text-white hover:bg-zinc-800">Cross</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
