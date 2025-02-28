@@ -334,6 +334,30 @@ const categories: Record<string, CategoryInfo> = {
       hasBottom: true
     }
   },
+  charmAttachment: {
+    name: "Charm Attachment",
+    description: "A simple charm bail with a loop and connecting pin that extends horizontally to attach to 3D models.",
+    priceInfo: {
+      small: {
+        dimensions: "0.5 x 0.15 x 0.08 in",
+        price: 4.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "0.8 x 0.25 x 0.10 in",
+        price: 6.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'charmAttachment',
+      loopSize: 0.50,
+      loopThickness: 0.08,
+      stickLength: 0.30,
+      stickThickness: 0.08,
+      material: 'shiny'
+    }
+  },
 } as const
 
 const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams) => {
@@ -413,6 +437,13 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
         { id: "diameter" as const, label: "Diameter/Width (in)", min: 2, max: 5, step: 0.25 },
         { id: "wallThickness" as const, label: "Wall Thickness (in)", min: 0.1, max: 0.4, step: 0.05 },
         { id: "dividerCount" as const, label: "Grid Size", min: 2, max: 4, step: 1 }
+      ] as const
+    case 'charmAttachment':
+      return [
+        { id: "loopSize" as const, label: "Loop Size (in)", min: 0.3, max: 0.8, step: 0.01 },
+        { id: "loopThickness" as const, label: "Loop Thickness (in)", min: 0.05, max: 0.15, step: 0.01 },
+        { id: "stickLength" as const, label: "Stick Length (in)", min: 0.2, max: 0.5, step: 0.01 },
+        { id: "stickThickness" as const, label: "Stick Thickness (in)", min: 0.05, max: 0.15, step: 0.01 }
       ] as const
   }
 }
@@ -567,7 +598,16 @@ interface PencilHolderParams extends BaseShapeParams {
   hasBottom: boolean; // Whether the pencil holder has a bottom
 }
 
-type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams
+interface CharmAttachmentParams extends BaseShapeParams {
+  type: 'charmAttachment';
+  loopSize: number; // Size of the top circular loop in inches
+  loopThickness: number; // Thickness of the loop in inches
+  stickLength: number; // Length of the connecting stick in inches
+  stickThickness: number; // Thickness of the stick in inches
+  material: keyof typeof materials;
+}
+
+type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams
 
 interface ParametricShapeProps {
   params: ShapeParams
@@ -2305,6 +2345,129 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
   return { vertices, indices, normals };
 }
 
+function generateCharmAttachmentGeometry(params: CharmAttachmentParams) {
+  const {
+    loopSize: loopSizeInches,
+    loopThickness: loopThicknessInches,
+    stickLength: stickLengthInches,
+    stickThickness: stickThicknessInches
+  } = params;
+  
+  // Convert inches to cm
+  const loopRadius = inchesToCm(loopSizeInches / 2);
+  const loopThickness = inchesToCm(loopThicknessInches);
+  const stickLength = inchesToCm(stickLengthInches);
+  const stickThickness = inchesToCm(stickThicknessInches);
+  
+  // Arrays for storing geometry data
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const normals: number[] = [];
+  
+  // Number of segments for the circular loop
+  const radialSegments = 32;
+  const tubularSegments = 32;
+  
+  // STEP 1: CREATE THE CIRCULAR LOOP
+  // We'll create a torus (donut shape) for the loop
+  
+  // Create the loop (torus)
+  for (let i = 0; i <= tubularSegments; i++) {
+    const tubularAngle = (i / tubularSegments) * Math.PI * 2;
+    
+    for (let j = 0; j <= radialSegments; j++) {
+      const radialAngle = (j / radialSegments) * Math.PI * 2;
+      
+      // Calculate positions on the torus
+      const x = (loopRadius + loopThickness/2 * Math.cos(radialAngle)) * Math.cos(tubularAngle);
+      const y = (loopThickness/2 * Math.sin(radialAngle));
+      const z = (loopRadius + loopThickness/2 * Math.cos(radialAngle)) * Math.sin(tubularAngle);
+      
+      // Calculate normals
+      const nx = Math.cos(radialAngle) * Math.cos(tubularAngle);
+      const ny = Math.sin(radialAngle);
+      const nz = Math.cos(radialAngle) * Math.sin(tubularAngle);
+      
+      // Add vertex and normal
+      vertices.push(x, y, z);
+      normals.push(nx, ny, nz);
+    }
+  }
+  
+  // Create indices for the loop
+  for (let i = 0; i < tubularSegments; i++) {
+    for (let j = 0; j < radialSegments; j++) {
+      const a = (radialSegments + 1) * i + j;
+      const b = (radialSegments + 1) * ((i + 1) % tubularSegments) + j;
+      const c = (radialSegments + 1) * ((i + 1) % tubularSegments) + ((j + 1) % radialSegments);
+      const d = (radialSegments + 1) * i + ((j + 1) % radialSegments);
+      
+      // Create two triangles for each face
+      indices.push(a, b, d);
+      indices.push(b, c, d);
+    }
+  }
+  
+  // STEP 2: CREATE THE HORIZONTAL CONNECTING STICK/PIN
+  // The stick extends horizontally from the right side of the loop
+  
+  // Create reference point where the stick attaches to the loop
+  const attachPointX = 0; // Center X
+  const attachPointY = 0; // Center Y (coplanar with loop)
+  const attachPointZ = loopRadius + loopThickness/2; // Right edge of the loop
+  
+  const stickEndZ = attachPointZ + stickLength; // Extend to the right
+  const stickRadius = stickThickness / 2;
+  
+  // Base vertex index for the stick
+  const stickBaseIndex = vertices.length / 3;
+  
+  // Create vertices for the cylinder stick
+  for (let i = 0; i <= radialSegments; i++) {
+    const theta = (i / radialSegments) * Math.PI * 2;
+    const x = attachPointX + Math.cos(theta) * stickRadius;
+    const y = attachPointY + Math.sin(theta) * stickRadius;
+    
+    // Left vertices of the stick (where it connects to the loop)
+    vertices.push(x, y, attachPointZ);
+    normals.push(0, 0, -1); // Point toward the loop
+    
+    // Right vertices of the stick (the end)
+    vertices.push(x, y, stickEndZ);
+    normals.push(0, 0, 1); // Point away from the loop
+  }
+  
+  // Create indices for the stick cylinder walls
+  for (let i = 0; i < radialSegments; i++) {
+    const leftVertex = stickBaseIndex + i * 2;
+    const leftVertexNext = stickBaseIndex + ((i + 1) % radialSegments) * 2;
+    const rightVertex = leftVertex + 1;
+    const rightVertexNext = leftVertexNext + 1;
+    
+    // Create two triangles for each face section of the cylinder
+    indices.push(leftVertex, leftVertexNext, rightVertex);
+    indices.push(leftVertexNext, rightVertexNext, rightVertex);
+  }
+  
+  // STEP 3: CREATE THE END CAP OF THE STICK
+  const endCapCenterIndex = vertices.length / 3;
+  vertices.push(attachPointX, attachPointY, stickEndZ);
+  normals.push(0, 0, 1); // Point outward
+  
+  for (let i = 0; i < radialSegments; i++) {
+    const rightVertex = stickBaseIndex + i * 2 + 1; // Get right vertices
+    const rightVertexNext = stickBaseIndex + ((i + 1) % radialSegments) * 2 + 1;
+    
+    // Create triangles for the end cap
+    indices.push(endCapCenterIndex, rightVertex, rightVertexNext);
+  }
+  
+  // We don't need to create a cap at the loop connection point
+  // as it will be inside the loop model
+  
+  return { vertices, indices, normals };
+}
+
 function ParametricShape({ params, meshRef }: ParametricShapeProps) {
   const generateGeometry = useCallback(() => {
     switch (params.type) {
@@ -2324,6 +2487,8 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
         return generateBraceletGeometry(params as BraceletParams)
       case 'pencilHolder':
         return generatePencilHolderGeometry(params as PencilHolderParams)
+      case 'charmAttachment':
+        return generateCharmAttachmentGeometry(params as CharmAttachmentParams)
       default:
         return generateStandardGeometry(params)
     }
@@ -2799,7 +2964,12 @@ export default function Component() {
                       <Label className="text-sm font-medium">{control.label}</Label>
                       <span className="text-xs text-zinc-400">
                         {typeof (shapeParams as any)[control.id] === 'number' 
-                          ? ((shapeParams as any)[control.id]?.toFixed?.(control.step === 0.1 ? 1 : 0) || (shapeParams as any)[control.id])
+                          ? ((shapeParams as any)[control.id]?.toFixed?.(
+                              // Use 2 decimal places for charm attachment parameters
+                              shapeParams.type === 'charmAttachment' ? 2 : 
+                              // Otherwise use existing logic
+                              control.step === 0.1 ? 1 : 0
+                            ) || (shapeParams as any)[control.id])
                           : ''}
                       </span>
                     </div>
@@ -2866,6 +3036,16 @@ export default function Component() {
                           <SelectItem value="no" className="text-white hover:bg-zinc-800">No</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </>
+                )}
+
+                {shapeParams.type === 'charmAttachment' && (
+                  <>
+                    <div className="space-y-1.5">
+                      <p className="text-sm text-zinc-400">
+                        A flat charm bail with a loop and horizontal pin that can be attached to existing 3D models.
+                      </p>
                     </div>
                   </>
                 )}
