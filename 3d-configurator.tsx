@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, Suspense, useCallback, useEffect } from "react"
+import { useState, useRef, Suspense, useCallback, useEffect, useMemo } from "react"
 import { Canvas } from "@react-three/fiber"
 import { OrbitControls, Environment, MeshTransmissionMaterial, Center } from "@react-three/drei"
 import { Slider } from "@/components/ui/slider"
@@ -12,6 +12,8 @@ import { STLExporter } from 'three/addons/exporters/STLExporter.js'
 import * as THREE from 'three'
 import { DoubleSide } from 'three'
 import Image from 'next/image'
+import { cloneDeep } from 'lodash'
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 interface PriceInfo {
   dimensions: string;
@@ -339,24 +341,67 @@ const categories: Record<string, CategoryInfo> = {
     description: "A simple charm bail with a loop and connecting pin that extends horizontally to attach to 3D models.",
     priceInfo: {
       small: {
-        dimensions: "0.5 x 0.15 x 0.08 in",
+        dimensions: "0.5 x 0.5 x 0.2 in",
         price: 4.99,
         priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
       },
       medium: {
-        dimensions: "0.8 x 0.25 x 0.10 in",
+        dimensions: "0.8 x 0.8 x 0.3 in",
         price: 6.99,
         priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
       }
     },
     defaults: {
       type: 'charmAttachment',
-      loopSize: 0.50,
+      loopSize: 0.5,
       loopThickness: 0.08,
-      stickLength: 0.30,
+      stickLength: 0.3,
       stickThickness: 0.08,
       material: 'shiny'
     }
+  },
+  ring: {
+    name: "Ring",
+    description: "A customizable ring with various design options.",
+    priceInfo: {
+      small: {
+        dimensions: "0.75 in diameter",
+        price: 29.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "0.85 in diameter",
+        price: 34.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'ring',
+      material: 'slate',
+      innerDiameter: 0.75,
+      thickness: 0.08,
+      width: 0.25,
+      patternType: 'plain',
+      patternScale: 1,
+      gapSize: 40,
+    },
+  },
+  monitorStand: {
+    name: "Monitor Stand",
+    description: "Elevate your monitor with our customizable monitor stand.",
+    priceInfo: {
+      small: { dimensions: '12"W × 8"D × 4"H', price: 59.99, priceId: 'price_monitorstand_small' },
+      medium: { dimensions: '16"W × 10"D × 5"H', price: 79.99, priceId: 'price_monitorstand_medium' },
+    },
+    defaults: {
+      type: 'monitorStand',
+      material: 'shiny',
+      width: 16,
+      depth: 10,
+      height: 5,
+      thickness: 1,
+      legStyle: 'minimal',
+    },
   },
 } as const
 
@@ -433,18 +478,36 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
       ] as const
     case 'pencilHolder':
       return [
-        { id: "height" as const, label: "Height (in)", min: 2, max: 6, step: 0.25 },
-        { id: "diameter" as const, label: "Diameter/Width (in)", min: 2, max: 5, step: 0.25 },
-        { id: "wallThickness" as const, label: "Wall Thickness (in)", min: 0.1, max: 0.4, step: 0.05 },
-        { id: "dividerCount" as const, label: "Grid Size", min: 2, max: 4, step: 1 }
+        { id: "height" as const, label: "Height (in)", min: 3, max: 10, step: 0.1 },
+        { id: "diameter" as const, label: "Diameter/Width (in)", min: 2, max: 8, step: 0.1 },
+        { id: "wallThickness" as const, label: "Wall Thickness (in)", min: 0.1, max: 0.5, step: 0.05 },
+        { id: "dividerCount" as const, label: "Divider Count", min: 0, max: 4, step: 1 },
       ] as const
     case 'charmAttachment':
       return [
-        { id: "loopSize" as const, label: "Loop Size (in)", min: 0.3, max: 0.8, step: 0.01 },
-        { id: "loopThickness" as const, label: "Loop Thickness (in)", min: 0.05, max: 0.15, step: 0.01 },
-        { id: "stickLength" as const, label: "Stick Length (in)", min: 0.2, max: 0.5, step: 0.01 },
-        { id: "stickThickness" as const, label: "Stick Thickness (in)", min: 0.05, max: 0.15, step: 0.01 }
+        { id: "loopSize" as const, label: "Loop Size (in)", min: 0.3, max: 1.0, step: 0.05 },
+        { id: "loopThickness" as const, label: "Loop Thickness (in)", min: 0.05, max: 0.2, step: 0.01 },
+        { id: "stickLength" as const, label: "Stick Length (in)", min: 0.1, max: 0.6, step: 0.05 },
+        { id: "stickThickness" as const, label: "Stick Thickness (in)", min: 0.05, max: 0.15, step: 0.01 },
       ] as const
+    case 'ring':
+      return [
+        { id: "innerDiameter" as const, label: "Inner Diameter (in)", min: 0.50, max: 1.20, step: 0.01 },
+        { id: "thickness" as const, label: "Thickness (in)", min: 0.02, max: 0.20, step: 0.01 },
+        { id: "width" as const, label: "Width (in)", min: 0.10, max: 0.50, step: 0.01 },
+        { id: "patternScale" as const, label: "Pattern Scale", min: 0.50, max: 3.00, step: 0.01 },
+        { id: "gapSize" as const, label: "Gap Size (degrees)", min: 0, max: 180, step: 5 }
+      ] as const
+    case 'monitorStand':
+      return [
+        { id: "width" as const, label: "Width (in)", min: 10.00, max: 20.00, step: 0.01 },
+        { id: "depth" as const, label: "Depth (in)", min: 6.00, max: 12.00, step: 0.01 },
+        { id: "height" as const, label: "Height (in)", min: 2.00, max: 6.00, step: 0.01 },
+        { id: "thickness" as const, label: "Thickness (in)", min: 0.50, max: 1.50, step: 0.01 },
+        { id: "patternDepth" as const, label: "Pattern Depth (in)", min: 0.00, max: 0.25, step: 0.01 }
+      ] as const
+    default:
+      return []
   }
 }
 
@@ -607,7 +670,26 @@ interface CharmAttachmentParams extends BaseShapeParams {
   material: keyof typeof materials;
 }
 
-type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams
+interface RingParams extends BaseShapeParams {
+  type: 'ring';
+  innerDiameter: number; // Inner diameter in inches
+  thickness: number; // Thickness in inches (from inner to outer)
+  width: number; // Width in inches (band width)
+  patternType: 'plain' | 'waves' | 'geometric' | 'organic';
+  patternScale: number; // Scale of the pattern
+  gapSize: number; // Size of the opening gap in degrees (0-180)
+}
+
+interface MonitorStandParams extends BaseShapeParams {
+  type: 'monitorStand';
+  width: number; // Width of the stand in inches
+  depth: number; // Depth of the stand in inches
+  height: number; // Height of the stand in inches
+  thickness: number; // Thickness of the platform in inches
+  legStyle: 'minimal' | 'solid'; // Style of the supporting legs
+}
+
+type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams | RingParams | MonitorStandParams
 
 interface ParametricShapeProps {
   params: ShapeParams
@@ -2468,33 +2550,247 @@ function generateCharmAttachmentGeometry(params: CharmAttachmentParams) {
   return { vertices, indices, normals };
 }
 
+function generateRingGeometry(params: RingParams) {
+  const {
+    innerDiameter,
+    thickness,
+    width,
+    patternType,
+    patternScale,
+    gapSize
+  } = params;
+
+  // Convert inches to centimeters
+  const innerRadiusCm = inchesToCm(innerDiameter) / 2;
+  const outerRadiusCm = innerRadiusCm + inchesToCm(thickness);
+  const ringWidthCm = inchesToCm(width);
+  
+  // Calculate the number of segments for the circle - more segments for smoother curves
+  const actualSegments = Math.floor((360 - gapSize) / 5); // One segment every 5 degrees
+  
+  // Create the ring geometry
+  const geometry = new THREE.BufferGeometry();
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  
+  // Calculate start and end angles for the C-shape (in radians)
+  const startAngle = (gapSize / 2) * (Math.PI / 180);
+  const endAngle = (360 - gapSize / 2) * (Math.PI / 180);
+  
+  // Helper function to create a point on the circle at a specific angle
+  const createCirclePoint = (diameter: number, angle: number, y: number) => {
+    const radius = diameter / 2;
+    return [
+      radius * Math.cos(angle),
+      y,
+      radius * Math.sin(angle)
+    ];
+  };
+  
+  // Create the vertices for the C-shaped ring
+  for (let i = 0; i <= actualSegments; i++) {
+    // Calculate the angle for this segment
+    const angle = startAngle + (i / actualSegments) * (endAngle - startAngle);
+    
+    // Inner bottom, inner top, outer top, outer bottom
+    const innerBottom = createCirclePoint(inchesToCm(innerDiameter), angle, -ringWidthCm/2);
+    const innerTop = createCirclePoint(inchesToCm(innerDiameter), angle, ringWidthCm/2);
+    const outerTop = createCirclePoint(inchesToCm(innerDiameter + thickness * 2), angle, ringWidthCm/2);
+    const outerBottom = createCirclePoint(inchesToCm(innerDiameter + thickness * 2), angle, -ringWidthCm/2);
+    
+    // Add points to positions array
+    positions.push(...innerBottom, ...innerTop, ...outerTop, ...outerBottom);
+    
+    // Calculate normals (pointing outward from center of ring)
+    normals.push(
+      Math.cos(angle), 0, Math.sin(angle),  // inner bottom
+      Math.cos(angle), 0, Math.sin(angle),  // inner top
+      Math.cos(angle), 0, Math.sin(angle),  // outer top
+      Math.cos(angle), 0, Math.sin(angle)   // outer bottom
+    );
+    
+    // If this isn't the last segment, create triangles
+    if (i < actualSegments) {
+      const baseIndex = i * 4;
+      
+      // Side faces
+      // First triangle: bottom-left, top-left, top-right
+      indices.push(baseIndex, baseIndex + 1, baseIndex + 5);
+      // Second triangle: bottom-left, top-right, bottom-right
+      indices.push(baseIndex, baseIndex + 5, baseIndex + 4);
+      
+      // Front face (outer surface)
+      // First triangle
+      indices.push(baseIndex + 2, baseIndex + 3, baseIndex + 7);
+      // Second triangle
+      indices.push(baseIndex + 2, baseIndex + 7, baseIndex + 6);
+      
+      // Top face
+      // First triangle
+      indices.push(baseIndex + 1, baseIndex + 2, baseIndex + 6);
+      // Second triangle
+      indices.push(baseIndex + 1, baseIndex + 6, baseIndex + 5);
+      
+      // Bottom face
+      // First triangle
+      indices.push(baseIndex, baseIndex + 7, baseIndex + 3);
+      // Second triangle
+      indices.push(baseIndex, baseIndex + 4, baseIndex + 7);
+    }
+  }
+  
+  // If there's a gap, add cap faces at the ends
+  if (gapSize > 0) {
+    const startBaseIndex = 0;
+    const endBaseIndex = actualSegments * 4;
+    
+    // Start cap
+    indices.push(
+      startBaseIndex, startBaseIndex + 3, startBaseIndex + 2,
+      startBaseIndex, startBaseIndex + 2, startBaseIndex + 1
+    );
+    
+    // End cap
+    indices.push(
+      endBaseIndex, endBaseIndex + 1, endBaseIndex + 2,
+      endBaseIndex, endBaseIndex + 2, endBaseIndex + 3
+    );
+  }
+  
+  // Apply pattern based on type
+  if (patternType !== 'plain') {
+    for (let i = 0; i < positions.length; i += 3) {
+      const x = positions[i];
+      const y = positions[i + 1];
+      const z = positions[i + 2];
+      
+      // Calculate angle and distance from center
+      const angle = Math.atan2(z, x);
+      const distance = Math.sqrt(x*x + z*z);
+      
+      // Apply different patterns based on type
+      let pattern = 0;
+      
+      switch (patternType) {
+        case 'waves':
+          pattern = Math.sin(angle * 8 * patternScale) * 0.05;
+          break;
+        case 'geometric':
+          pattern = (Math.sin(angle * 16 * patternScale) > 0 ? 0.05 : 0);
+          break;
+        case 'organic':
+          pattern = (Math.sin(angle * 4 * patternScale) * Math.cos(angle * 6 * patternScale)) * 0.05;
+          break;
+      }
+      
+      // Apply the pattern by adjusting the vertex position slightly
+      const direction = [x / distance, 0, z / distance];
+      positions[i] += direction[0] * pattern * distance;
+      positions[i + 2] += direction[2] * pattern * distance;
+    }
+  }
+  
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setIndex(indices);
+  
+  return geometry;
+}
+
+function generateMonitorStandGeometry(params: MonitorStandParams) {
+  const {
+    width,
+    depth,
+    height,
+    thickness,
+    legStyle,
+  } = params;
+
+  // Convert inches to centimeters for Three.js
+  const widthCm = inchesToCm(width);
+  const depthCm = inchesToCm(depth);
+  const heightCm = inchesToCm(height);
+  const thicknessCm = inchesToCm(thickness);
+
+  // Create the top platform
+  const platformGeometry = new THREE.BoxGeometry(widthCm, thicknessCm, depthCm);
+  platformGeometry.translate(0, heightCm - thicknessCm / 2, 0);
+
+  // Combine all geometries
+  const geometries: THREE.BufferGeometry[] = [platformGeometry];
+
+  // Add legs based on the selected style
+  if (legStyle === 'minimal') {
+    // Minimal legs - thin supports at corners
+    const legThickness = inchesToCm(0.4); // Thin legs
+    const legInset = inchesToCm(0.5); // Inset from edges
+    
+    // Four corner legs
+    const positions = [
+      [-widthCm/2 + legInset, 0, -depthCm/2 + legInset],
+      [widthCm/2 - legInset, 0, -depthCm/2 + legInset],
+      [-widthCm/2 + legInset, 0, depthCm/2 - legInset],
+      [widthCm/2 - legInset, 0, depthCm/2 - legInset],
+    ];
+    
+    for (const [x, y, z] of positions) {
+      const legGeometry = new THREE.BoxGeometry(legThickness, heightCm - thicknessCm, legThickness);
+      legGeometry.translate(x, (heightCm - thicknessCm) / 2, z);
+      geometries.push(legGeometry);
+    }
+  } else if (legStyle === 'solid') {
+    // Solid legs - full panels on sides
+    const legHeight = heightCm - thicknessCm;
+    const frontBackLegGeometry = new THREE.BoxGeometry(widthCm, legHeight, inchesToCm(0.4));
+    frontBackLegGeometry.translate(0, legHeight / 2, -depthCm/2 + inchesToCm(0.2));
+    geometries.push(frontBackLegGeometry);
+    
+    // Back panel
+    const backLegGeometry = new THREE.BoxGeometry(widthCm, legHeight, inchesToCm(0.4));
+    backLegGeometry.translate(0, legHeight / 2, depthCm/2 - inchesToCm(0.2));
+    geometries.push(backLegGeometry);
+  }
+
+  // Merge all geometries
+  const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
+  
+  return mergedGeometry;
+}
+
 function ParametricShape({ params, meshRef }: ParametricShapeProps) {
-  const generateGeometry = useCallback(() => {
-    switch (params.type) {
+  const geometry = useMemo(() => {
+    const params_ = cloneDeep(params)
+    switch (params_.type) {
+      case 'standard':
+        return generateStandardGeometry(params_ as StandardShapeParams)
       case 'coaster':
-        return generateCoasterGeometry(params)
+        return generateCoasterGeometry(params_ as CoasterShapeParams)
       case 'wallArt':
-        return generateWallArtGeometry(params)
+        return generateWallArtGeometry(params_ as WallArtParams)
       case 'candleHolder':
-        return generateCandleHolderGeometry(params)
+        return generateCandleHolderGeometry(params_ as CandleHolderParams)
       case 'bowl':
-        return generateBowlGeometry(params)
+        return generateBowlGeometry(params_ as BowlParams)
       case 'cylinderBase':
-        return generateCylinderBaseGeometry(params)
+        return generateCylinderBaseGeometry(params_ as CylinderBaseParams)
       case 'phoneHolder':
-        return generatePhoneHolderGeometry(params as PhoneHolderParams)
+        return generatePhoneHolderGeometry(params_ as PhoneHolderParams)
       case 'bracelet':
-        return generateBraceletGeometry(params as BraceletParams)
+        return generateBraceletGeometry(params_ as BraceletParams)
       case 'pencilHolder':
-        return generatePencilHolderGeometry(params as PencilHolderParams)
+        return generatePencilHolderGeometry(params_ as PencilHolderParams)
       case 'charmAttachment':
-        return generateCharmAttachmentGeometry(params as CharmAttachmentParams)
+        return generateCharmAttachmentGeometry(params_ as CharmAttachmentParams)
+      case 'ring':
+        return generateRingGeometry(params_ as RingParams)
+      case 'monitorStand':
+        return generateMonitorStandGeometry(params_ as MonitorStandParams)
       default:
-        return generateStandardGeometry(params)
+        return generateStandardGeometry(params_ as StandardShapeParams)
     }
   }, [params])
 
-  const geometry = generateGeometry()
   const materialConfig = materials[params.material]
 
   if (!materialConfig) {
@@ -2502,6 +2798,42 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
     return (
       <group>
         <mesh ref={meshRef}>
+          {isThreeBufferGeometry(geometry) ? (
+            <primitive object={geometry} />
+          ) : (
+            <bufferGeometry>
+              <bufferAttribute
+                attach="attributes-position"
+                count={geometry.vertices.length / 3}
+                array={new Float32Array(geometry.vertices)}
+                itemSize={3}
+              />
+              <bufferAttribute
+                attach="attributes-normal"
+                count={geometry.normals.length / 3}
+                array={new Float32Array(geometry.normals)}
+                itemSize={3}
+              />
+              <bufferAttribute
+                attach="index"
+                count={geometry.indices.length}
+                array={new Uint16Array(geometry.indices)}
+                itemSize={1}
+              />
+            </bufferGeometry>
+          )}
+          <meshStandardMaterial {...materials.matte.props} />
+        </mesh>
+      </group>
+    )
+  }
+
+  return (
+    <group>
+      <mesh ref={meshRef}>
+        {isThreeBufferGeometry(geometry) ? (
+          <primitive object={geometry} />
+        ) : (
           <bufferGeometry>
             <bufferAttribute
               attach="attributes-position"
@@ -2522,43 +2854,20 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
               itemSize={1}
             />
           </bufferGeometry>
-          <meshStandardMaterial {...materials.matte.props} />
-        </mesh>
-      </group>
-    )
-  }
-
-  return (
-    <group>
-    <mesh ref={meshRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={geometry.vertices.length / 3}
-          array={new Float32Array(geometry.vertices)}
-          itemSize={3}
-        />
-        <bufferAttribute
-          attach="attributes-normal"
-          count={geometry.normals.length / 3}
-          array={new Float32Array(geometry.normals)}
-          itemSize={3}
-        />
-        <bufferAttribute
-          attach="index"
-          count={geometry.indices.length}
-          array={new Uint16Array(geometry.indices)}
-          itemSize={1}
-        />
-      </bufferGeometry>
+        )}
         {materialConfig.type === "basic" ? (
           <meshBasicMaterial {...materialConfig.props} />
-      ) : (
-        <meshStandardMaterial {...materialConfig.props} />
-      )}
-    </mesh>
+        ) : (
+          <meshStandardMaterial {...materialConfig.props} />
+        )}
+      </mesh>
     </group>
   )
+}
+
+// Helper function to type check geometry
+function isThreeBufferGeometry(geometry: THREE.BufferGeometry | { vertices: number[], indices: number[], normals: number[] }): geometry is THREE.BufferGeometry {
+  return geometry instanceof THREE.BufferGeometry;
 }
 
 interface TransmissionMaterialProps {
@@ -2842,17 +3151,26 @@ export default function Component() {
                   </Select>
                 </div>
 
-                {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet') && (
+                {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet' || shapeParams.type === 'ring') && (
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">Pattern Type</Label>
                     <Select 
-                      value={
-                        shapeParams.type === 'coaster' ? shapeParams.patternType :
-                        shapeParams.type === 'wallArt' ? shapeParams.patternType :
-                        shapeParams.type === 'candleHolder' ? shapeParams.patternType :
-                        shapeParams.type === 'bracelet' ? shapeParams.patternType :
-                        undefined
-                      }
+                      value={(() => {
+                        switch (shapeParams.type) {
+                          case 'coaster':
+                            return (shapeParams as CoasterShapeParams).patternType;
+                          case 'wallArt':
+                            return (shapeParams as WallArtParams).patternType;
+                          case 'candleHolder':
+                            return (shapeParams as CandleHolderParams).patternType;
+                          case 'bracelet':
+                            return (shapeParams as BraceletParams).patternType;
+                          case 'ring':
+                            return (shapeParams as RingParams).patternType;
+                          default:
+                            return 'plain';
+                        }
+                      })()}
                       onValueChange={(value) => updateParam("patternType", value)}
                     >
                       <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
@@ -2892,6 +3210,14 @@ export default function Component() {
                             <SelectItem value="waves">Waves</SelectItem>
                             <SelectItem value="geometric">Geometric</SelectItem>
                             <SelectItem value="organic">Organic</SelectItem>
+                          </>
+                        )}
+                        {shapeParams.type === 'ring' && (
+                          <>
+                            <SelectItem value="plain" className="text-white hover:bg-zinc-800">Plain</SelectItem>
+                            <SelectItem value="waves" className="text-white hover:bg-zinc-800">Waves</SelectItem>
+                            <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
+                            <SelectItem value="organic" className="text-white hover:bg-zinc-800">Organic</SelectItem>
                           </>
                         )}
                       </SelectContent>
@@ -2965,9 +3291,8 @@ export default function Component() {
                       <span className="text-xs text-zinc-400">
                         {typeof (shapeParams as any)[control.id] === 'number' 
                           ? ((shapeParams as any)[control.id]?.toFixed?.(
-                              // Use 2 decimal places for charm attachment parameters
-                              shapeParams.type === 'charmAttachment' ? 2 : 
-                              // Otherwise use existing logic
+                              shapeParams.type === 'ring' ? 2 : 
+                              control.step === 0.01 ? 2 : 
                               control.step === 0.1 ? 1 : 0
                             ) || (shapeParams as any)[control.id])
                           : ''}
@@ -3046,6 +3371,28 @@ export default function Component() {
                       <p className="text-sm text-zinc-400">
                         A flat charm bail with a loop and horizontal pin that can be attached to existing 3D models.
                       </p>
+                    </div>
+                  </>
+                )}
+
+                {shapeParams.type === 'monitorStand' && (
+                  <>
+                    <div className="flex flex-col space-y-2">
+                      <Label className="text-white">Leg Style</Label>
+                      <Select
+                        value={(shapeParams as MonitorStandParams).legStyle}
+                        onValueChange={(value) => {
+                          updateParam("legStyle", value);
+                        }}
+                      >
+                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                          <SelectValue placeholder="Select leg style" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="minimal" className="text-white hover:bg-zinc-800">Minimal</SelectItem>
+                          <SelectItem value="solid" className="text-white hover:bg-zinc-800">Solid</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </>
                 )}
