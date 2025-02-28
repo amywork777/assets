@@ -324,13 +324,14 @@ const categories: Record<string, CategoryInfo> = {
     },
     defaults: {
       type: 'pencilHolder',
-      shape: 'circle',
+      shape: 'square',
       material: 'shiny',
       height: 3.5,
       diameter: 3,
       wallThickness: 0.2,
-      dividerType: 'none',
-      dividerCount: 2
+      dividerType: 'grid',
+      dividerCount: 2,
+      hasBottom: true
     }
   },
 } as const
@@ -563,6 +564,7 @@ interface PencilHolderParams extends BaseShapeParams {
   wallThickness: number; // Wall thickness in inches
   dividerType: 'none' | 'single' | 'cross' | 'grid'; // Type of divider
   dividerCount: number; // Number of dividers (for grid type)
+  hasBottom: boolean; // Whether the pencil holder has a bottom
 }
 
 type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams
@@ -1968,7 +1970,8 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
     diameter: diameterInches,
     wallThickness: wallThicknessInches,
     dividerType,
-    dividerCount
+    dividerCount,
+    hasBottom
   } = params;
   
   // Convert to cm
@@ -1991,52 +1994,57 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
   // Add base (bottom)
   const bottomY = 0;
   
-  // Center vertex for the base
-  vertices.push(0, bottomY, 0);
-  normals.push(0, -1, 0);
-  
-  // Base outer vertices - circle or square
-  for (let i = 0; i <= radialSegments; i++) {
-    const theta = (i / radialSegments) * Math.PI * 2;
-    let x, z;
+  if (hasBottom) {
+    // OUTER BOTTOM FACE (new code)
+    // Center vertex for the outer bottom face
+    const outerBottomCenterIndex = vertices.length / 3;
+    vertices.push(0, bottomY, 0);
+    normals.push(0, -1, 0);
     
-    if (shape === 'circle') {
-      x = diameter / 2 * Math.cos(theta);
-      z = diameter / 2 * Math.sin(theta);
-    } else {
-      // For square, calculate the x,z coordinates of the corners and edges
-      const segmentPos = i % radialSegments;
-      const halfWidth = diameter / 2;
+    // Outer bottom vertices - circle or square
+    const outerBottomStartIndex = vertices.length / 3;
+    for (let i = 0; i <= radialSegments; i++) {
+      const theta = (i / radialSegments) * Math.PI * 2;
+      let x, z;
       
-      if (segmentPos === 0) {
-        x = halfWidth;
-        z = halfWidth;
-      } else if (segmentPos === 1) {
-        x = -halfWidth;
-        z = halfWidth;
-      } else if (segmentPos === 2) {
-        x = -halfWidth;
-        z = -halfWidth;
-      } else if (segmentPos === 3) {
-        x = halfWidth;
-        z = -halfWidth;
+      if (shape === 'circle') {
+        x = diameter / 2 * Math.cos(theta);
+        z = diameter / 2 * Math.sin(theta);
       } else {
-        x = halfWidth;
-        z = halfWidth;
+        // For square, calculate the x,z coordinates of the corners and edges
+        const segmentPos = i % radialSegments;
+        const halfWidth = diameter / 2;
+        
+        if (segmentPos === 0) {
+          x = halfWidth;
+          z = halfWidth;
+        } else if (segmentPos === 1) {
+          x = -halfWidth;
+          z = halfWidth;
+        } else if (segmentPos === 2) {
+          x = -halfWidth;
+          z = -halfWidth;
+        } else if (segmentPos === 3) {
+          x = halfWidth;
+          z = -halfWidth;
+        } else {
+          x = halfWidth;
+          z = halfWidth;
+        }
       }
+      
+      vertices.push(x, bottomY, z);
+      normals.push(0, -1, 0);
     }
     
-    vertices.push(x, bottomY, z);
-    normals.push(0, -1, 0);
-  }
-  
-  // Base indices (triangles from center to edge)
-  for (let i = 0; i < radialSegments; i++) {
-    indices.push(
-      0, // Center
-      i + 1, // Current point
-      (i + 1) % radialSegments + 1 // Next point
-    );
+    // Outer bottom indices (triangles from center to edge)
+    for (let i = 0; i < radialSegments; i++) {
+      indices.push(
+        outerBottomCenterIndex, // Center
+        outerBottomStartIndex + i, // Current point
+        outerBottomStartIndex + (i + 1) % radialSegments // Next point
+      );
+    }
   }
   
   // Side walls
@@ -2169,53 +2177,71 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
     );
   }
   
-  // Add inner bottom surface for a watertight model
-  // This creates the "floor" of the pencil holder
-  const floorCenterIndex = vertices.length / 3;
-  vertices.push(0, bottomY, 0);  // Center point of the floor
-  normals.push(0, 1, 0);  // Normal points up for inner floor
-  
-  // Inner floor vertices follow the inner wall profile
-  const floorBaseIndex = vertices.length / 3;
-  for (let i = 0; i <= radialSegments; i++) {
-    let innerX, innerZ;
-    if (shape === 'circle') {
-      const theta = (i / radialSegments) * Math.PI * 2;
-      innerX = innerDiameter / 2 * Math.cos(theta);
-      innerZ = innerDiameter / 2 * Math.sin(theta);
-    } else {
-      const segmentPos = i % radialSegments;
-      const innerHalfWidth = (diameter - 2 * wallThickness) / 2;
+  // Connect inner and outer bottom at the bottom edge when hasBottom is true
+  if (hasBottom) {
+    // BOTTOM EDGE CONNECTION (new code)
+    // Connect the inner and outer walls at the bottom
+    for (let i = 0; i < radialSegments; i++) {
+      const outerCurrent = baseVertexCount + i * 2;
+      const outerNext = baseVertexCount + ((i + 1) % radialSegments) * 2;
+      const innerCurrent = outerCurrent + 1;
+      const innerNext = outerNext + 1;
       
-      if (segmentPos === 0) {
-        innerX = innerHalfWidth;
-        innerZ = innerHalfWidth;
-      } else if (segmentPos === 1) {
-        innerX = -innerHalfWidth;
-        innerZ = innerHalfWidth;
-      } else if (segmentPos === 2) {
-        innerX = -innerHalfWidth;
-        innerZ = -innerHalfWidth;
-      } else if (segmentPos === 3) {
-        innerX = innerHalfWidth;
-        innerZ = -innerHalfWidth;
-      } else {
-        innerX = innerHalfWidth;
-        innerZ = innerHalfWidth;
-      }
+      // Create a face connecting the inner and outer walls at the bottom
+      indices.push(
+        innerCurrent, outerCurrent, innerNext,
+        innerNext, outerCurrent, outerNext
+      );
     }
     
-    vertices.push(innerX, bottomY, innerZ);
+    // Add inner bottom surface for a watertight model
+    // This creates the "floor" of the pencil holder
+    const floorCenterIndex = vertices.length / 3;
+    vertices.push(0, bottomY, 0);  // Center point of the floor
     normals.push(0, 1, 0);  // Normal points up for inner floor
-  }
-  
-  // Inner floor indices (triangles radiating from center)
-  for (let i = 0; i < radialSegments; i++) {
-    indices.push(
-      floorCenterIndex,
-      floorBaseIndex + i,
-      floorBaseIndex + (i + 1) % (radialSegments + 1)
-    );
+    
+    // Inner floor vertices follow the inner wall profile
+    const floorBaseIndex = vertices.length / 3;
+    for (let i = 0; i <= radialSegments; i++) {
+      let innerX, innerZ;
+      if (shape === 'circle') {
+        const theta = (i / radialSegments) * Math.PI * 2;
+        innerX = innerDiameter / 2 * Math.cos(theta);
+        innerZ = innerDiameter / 2 * Math.sin(theta);
+      } else {
+        const segmentPos = i % radialSegments;
+        const innerHalfWidth = (diameter - 2 * wallThickness) / 2;
+        
+        if (segmentPos === 0) {
+          innerX = innerHalfWidth;
+          innerZ = innerHalfWidth;
+        } else if (segmentPos === 1) {
+          innerX = -innerHalfWidth;
+          innerZ = innerHalfWidth;
+        } else if (segmentPos === 2) {
+          innerX = -innerHalfWidth;
+          innerZ = -innerHalfWidth;
+        } else if (segmentPos === 3) {
+          innerX = innerHalfWidth;
+          innerZ = -innerHalfWidth;
+        } else {
+          innerX = innerHalfWidth;
+          innerZ = innerHalfWidth;
+        }
+      }
+      
+      vertices.push(innerX, bottomY, innerZ);
+      normals.push(0, 1, 0);  // Normal points up for inner floor
+    }
+    
+    // Inner floor indices (triangles radiating from center)
+    for (let i = 0; i < radialSegments; i++) {
+      indices.push(
+        floorCenterIndex,
+        floorBaseIndex + i,
+        floorBaseIndex + (i + 1) % (radialSegments + 1)
+      );
+    }
   }
   
   // Add dividers based on the divider type
@@ -2251,90 +2277,71 @@ function generatePencilHolderGeometry(params: PencilHolderParams) {
   
   // Helper function to add a divider
   function addDivider(x1: number, z1: number, x2: number, z2: number, thickness: number, height: number, bottomY: number) {
-    const dividerStart = vertices.length / 3;
-    const halfThickness = thickness / 2;
+    // Starting indices for the new vertices
+    const startIdx = vertices.length / 3;
     
-    // Direction vector of the divider
+    // Calculate divider direction and perpendicular vector
     const dx = x2 - x1;
     const dz = z2 - z1;
-    
-    // Normalize direction
     const length = Math.sqrt(dx * dx + dz * dz);
-    const ndx = dx / length;
-    const ndz = dz / length;
     
-    // Perpendicular vector for thickness
-    const perpX = -ndz;
-    const perpZ = ndx;
+    // Normalize direction vector
+    const dirX = dx / length;
+    const dirZ = dz / length;
     
-    // Calculate the four corners of the divider (bottom face)
-    const corners = [
-      // Bottom face corners
-      [x1 + perpX * halfThickness, bottomY, z1 + perpZ * halfThickness],
-      [x2 + perpX * halfThickness, bottomY, z2 + perpZ * halfThickness],
-      [x2 - perpX * halfThickness, bottomY, z2 - perpZ * halfThickness],
-      [x1 - perpX * halfThickness, bottomY, z1 - perpZ * halfThickness],
-      // Top face corners
-      [x1 + perpX * halfThickness, bottomY + height, z1 + perpZ * halfThickness],
-      [x2 + perpX * halfThickness, bottomY + height, z2 + perpZ * halfThickness],
-      [x2 - perpX * halfThickness, bottomY + height, z2 - perpZ * halfThickness],
-      [x1 - perpX * halfThickness, bottomY + height, z1 - perpZ * halfThickness]
-    ];
+    // Perpendicular vector (90 degrees counter-clockwise)
+    const perpX = -dirZ;
+    const perpZ = dirX;
     
-    // Add all vertices
-    for (const [x, y, z] of corners) {
-      vertices.push(x, y, z);
+    // Half thickness offset in the perpendicular direction
+    const offsetX = perpX * thickness / 2;
+    const offsetZ = perpZ * thickness / 2;
+    
+    // Create 8 vertices for the divider (4 for bottom, 4 for top)
+    // Bottom vertices
+    vertices.push(x1 + offsetX, bottomY, z1 + offsetZ); // Bottom left
+    vertices.push(x1 - offsetX, bottomY, z1 - offsetZ); // Bottom right
+    vertices.push(x2 - offsetX, bottomY, z2 - offsetZ); // Top right
+    vertices.push(x2 + offsetX, bottomY, z2 + offsetZ); // Top left
+    
+    // Top vertices
+    vertices.push(x1 + offsetX, bottomY + height, z1 + offsetZ); // Bottom left
+    vertices.push(x1 - offsetX, bottomY + height, z1 - offsetZ); // Bottom right
+    vertices.push(x2 - offsetX, bottomY + height, z2 - offsetZ); // Top right
+    vertices.push(x2 + offsetX, bottomY + height, z2 + offsetZ); // Top left
+    
+    // Add normals for all vertices (pointing perpendicular to the divider)
+    for (let i = 0; i < 4; i++) {
+      normals.push(perpX, 0, perpZ); // Front face normal
+    }
+    for (let i = 0; i < 4; i++) {
+      normals.push(-perpX, 0, -perpZ); // Back face normal
     }
     
-    // Add normals for each vertex
-    // Front face normals
-    normals.push(perpX, 0, perpZ);
-    normals.push(perpX, 0, perpZ);
-    // Back face normals
-    normals.push(-perpX, 0, -perpZ);
-    normals.push(-perpX, 0, -perpZ);
-    // Top face normals - same for all vertices
-    normals.push(perpX, 0, perpZ);
-    normals.push(perpX, 0, perpZ);
-    normals.push(-perpX, 0, -perpZ);
-    normals.push(-perpX, 0, -perpZ);
-    
-    // Add indices for all faces
+    // Add indices for the 6 faces of the divider (2 triangles per face)
     // Front face
-    indices.push(
-      dividerStart, dividerStart + 1, dividerStart + 4,
-      dividerStart + 1, dividerStart + 5, dividerStart + 4
-    );
+    indices.push(startIdx + 0, startIdx + 4, startIdx + 7);
+    indices.push(startIdx + 0, startIdx + 7, startIdx + 3);
     
     // Back face
-    indices.push(
-      dividerStart + 2, dividerStart + 6, dividerStart + 3,
-      dividerStart + 3, dividerStart + 6, dividerStart + 7
-    );
+    indices.push(startIdx + 1, startIdx + 2, startIdx + 6);
+    indices.push(startIdx + 1, startIdx + 6, startIdx + 5);
     
     // Top face
-    indices.push(
-      dividerStart + 4, dividerStart + 5, dividerStart + 6,
-      dividerStart + 4, dividerStart + 6, dividerStart + 7
-    );
+    indices.push(startIdx + 4, startIdx + 5, startIdx + 6);
+    indices.push(startIdx + 4, startIdx + 6, startIdx + 7);
     
     // Bottom face
-    indices.push(
-      dividerStart, dividerStart + 3, dividerStart + 2,
-      dividerStart, dividerStart + 2, dividerStart + 1
-    );
+    indices.push(startIdx + 0, startIdx + 3, startIdx + 2);
+    indices.push(startIdx + 0, startIdx + 2, startIdx + 1);
     
-    // End face 1
-    indices.push(
-      dividerStart, dividerStart + 4, dividerStart + 7,
-      dividerStart, dividerStart + 7, dividerStart + 3
-    );
+    // Left end
+    indices.push(startIdx + 0, startIdx + 1, startIdx + 5);
+    indices.push(startIdx + 0, startIdx + 5, startIdx + 4);
     
-    // End face 2
-    indices.push(
-      dividerStart + 1, dividerStart + 2, dividerStart + 6,
-      dividerStart + 1, dividerStart + 6, dividerStart + 5
-    );
+    // Right end
+    indices.push(startIdx + 3, startIdx + 7, startIdx + 6);
+    indices.push(startIdx + 3, startIdx + 6, startIdx + 2);
   }
   
   return { vertices, indices, normals };
@@ -2881,6 +2888,24 @@ export default function Component() {
                           <SelectItem value="single" className="text-white hover:bg-zinc-800">Single</SelectItem>
                           <SelectItem value="cross" className="text-white hover:bg-zinc-800">Cross</SelectItem>
                           <SelectItem value="grid" className="text-white hover:bg-zinc-800">Grid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium">Bottom</Label>
+                      <Select
+                        value={(shapeParams as PencilHolderParams).hasBottom ? "yes" : "no"}
+                        onValueChange={(value) => {
+                          updateParam("hasBottom", value === "yes" ? "true" : "false");
+                        }}
+                      >
+                        <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="yes" className="text-white hover:bg-zinc-800">Yes</SelectItem>
+                          <SelectItem value="no" className="text-white hover:bg-zinc-800">No</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
