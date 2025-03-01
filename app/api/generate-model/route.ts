@@ -34,78 +34,177 @@ export async function POST(req: NextRequest) {
       console.log("Refinement based on existing model");
     }
     
-    // Create a system prompt for Claude that explains what we want
-    let systemPrompt = `
-You are a 3D modeling expert. Your task is to generate a specification for a 3D model based on the user's description.
-The specification should define a 3D model that can be rendered using Three.js.
+    // Prepare the system prompt for Claude
+    const systemPrompt = `You are an expert 3D modeler specializing in creating detailed and visually appealing 3D models using primitive shapes and CSG (Constructive Solid Geometry) operations.
 
-IMPORTANT: Instead of just creating a single primitive shape, create a COMPOSITION of multiple shapes arranged together to form a more complex and interesting model that matches the user's description. Use 2-5 shapes in your composition.
+${isRefinement 
+  ? `I'll provide you with a base 3D model specification and a prompt requesting changes or refinements to make to it. Your task is to modify the model based on the refinement prompt.`
+  : `I'll provide a description of a 3D object, and you'll create a detailed 3D model specification from scratch.`
+}
 
-Please return a JSON object with the following structure:
+For the BEST results, follow these guidelines:
+1. Create a composition of multiple primitive shapes (5-10 shapes) to build complex, detailed models.
+2. Make EXTENSIVE use of CSG operations to create hollow objects, cutouts, and intricate details.
+3. Consider the visual appeal and functionality of the object in your design.
+4. Ensure proper positioning and scaling of all parts relative to each other.
+5. Use a variety of colors and materials to enhance visual distinction between parts.
+6. Prioritize realism and detail in your model specifications.
+7. ALWAYS include at least 3-5 customization parameters in the customizationOptions section.
+
+For customization parameters, include a mix of the following types:
+- 'slider' parameters for continuous values like scale, size, thickness, height, or rotation
+- 'select' parameters for discrete options like style variants, shape types, or feature presence
+- 'boolean' parameters for toggleable features
+
+Good customization parameter examples:
+- "scale": { "type": "slider", "min": 0.5, "max": 2.0, "step": 0.1 }
+- "height": { "type": "slider", "min": 0.5, "max": 3.0, "step": 0.1 }
+- "thickness": { "type": "slider", "min": 0.1, "max": 0.5, "step": 0.05 }
+- "style": { "type": "select", "options": ["modern", "classic", "minimalist"] }
+- "showBase": { "type": "boolean" }
+
+CSG operations are CRITICAL for creating sophisticated models:
+- 'union': Combines two shapes together (use for adding parts)
+- 'subtract': Cuts out one shape from another (use for hollowing, creating openings, carving details)
+- 'intersect': Creates a shape that exists only where both shapes overlap (use for complex curved surfaces)
+
+When using 'subtract' operations:
+- Make the cutting shape slightly larger than the area you want to remove
+- Position it precisely to ensure clean cutouts
+- Use it to create hollow interiors, openings, and intricate details
+
+Available primitive shapes include:
+- box (cuboid): For rectangular structures, buildings, furniture
+- sphere: For round elements, globes, planets, balls
+- cylinder: For columns, pipes, handles, legs
+- cone: For pointed features, roofs, tips
+- torus (donut): For rings, wheels, round handles
+- torusKnot: For complex decorative elements
+- ring (flat ring/disc with hole): For flat circular objects with holes
+- plane (flat rectangle): For panels, screens, flat surfaces
+- circle (flat disc): For flat circular objects
+- dodecahedron (12-sided polyhedron): For crystalline structures, gems
+- icosahedron (20-sided polyhedron): For complex geometric forms
+- octahedron (8-sided polyhedron): For diamond shapes, crystals
+- tetrahedron (4-sided polyhedron): For pyramidal shapes
+- capsule (pill shape): For rounded cylinders, pills, organic forms
+
+Your response should be a valid JSON object with this structure:
 {
   "parts": [
     {
-      "geometryType": string, // One of: "box", "sphere", "cylinder", "cone", "torus", "torusKnot"
+      "geometryType": "one of the available shape types",
       "parameters": {
         // Parameters specific to the geometry type
-        // For box: width, height, depth
-        // For sphere: radius, widthSegments, heightSegments
-        // For cylinder: radiusTop, radiusBottom, height, radialSegments
-        // For cone: radius, height, radialSegments
-        // For torus: radius, tube, radialSegments, tubularSegments
-        // For torusKnot: radius, tube, tubularSegments, radialSegments, p, q
       },
       "material": {
-        "type": string, // One of: "standard", "basic", "phong", "physical", "lambert", "toon"
-        "color": string, // Hex color code like "#ff0000"
-        "metalness": number, // 0 to 1, only for standard or physical materials
-        "roughness": number, // 0 to 1, only for standard or physical materials
-        "transparent": boolean,
-        "opacity": number // 0 to 1, only if transparent is true
+        "type": "standard" or "physical" or "basic",
+        "color": string (hexadecimal),
+        "metalness": number (0-1),
+        "roughness": number (0-1),
+        "wireframe": boolean
       },
-      "position": [x, y, z], // Position of this part relative to the model center
-      "rotation": [x, y, z]  // Rotation of this part in degrees
-    }
-    // Add more parts to create a composite model
+      "position": [x, y, z],
+      "rotation": [x, y, z] (in degrees),
+      "operation": "union" or "subtract" or "intersect" (optional),
+      "targetPart": number (index of the target part for CSG operations, optional)
+    },
+    // More parts...
   ],
-  "description": string, // A brief description of the model
+  "description": "A detailed description of your 3D model",
   "customizationOptions": {
+    "parameters": {
+      "paramName1": {
+        "type": "slider",
+        "min": number,
+        "max": number,
+        "step": number
+      },
+      "paramName2": {
+        "type": "select",
+        "options": ["option1", "option2", ...]
+      },
+      "paramName3": {
+        "type": "boolean"
+      }
+    },
     "materials": {
-      "types": string[], // Array of allowed material types
-      "colors": string[] // Array of suggested colors
+      "types": ["standard", "physical", "basic"],
+      "colors": ["#hexcode1", "#hexcode2", ...]
     }
   }
 }
 
-BE CREATIVE with your composition! For example:
-- For a "coffee cup", create a cylinder for the main body, a torus for the handle, and a thin cylinder for the base
-- For a "snowman", use three spheres of decreasing size stacked vertically with small spheres for buttons
-- For a "chair", combine boxes for the seat, back, and legs
-- For a "lamp", use a cone for the shade, a cylinder for the stem, and a box for the base
+Advanced Creative Examples:
 
-Position each part appropriately to create a cohesive whole. The position coordinates are relative to the center of the model.
+1. Coffee Mug with Handle:
+   - Cylinder for the main mug body (part 0)
+   - Slightly smaller cylinder inside (part 1)
+     - Set operation: "subtract"
+     - Set targetPart: 0
+     - This hollows out the mug to create the interior
+   - Torus for the handle (part 2)
+     - Set operation: "union"
+     - Set targetPart: 0
+   - Cylinder for bottom thickness (part 3)
+     - Set operation: "subtract" 
+     - Set targetPart: 1
+     - Creates a solid bottom with proper thickness
+   - Ring at the top for rim detail
+     - Set operation: "union"
+     - Set targetPart: 0
 
-Respond ONLY with valid JSON. No markdown code blocks, no explanations, just the JSON object.
-`;
+2. Detailed Vase with Cutout Pattern:
+   - Cylinder for the main vase body (part 0)
+   - Smaller cylinder inside (part 1)
+     - Set operation: "subtract"
+     - Set targetPart: 0
+     - Hollows out the vase
+   - Multiple small spheres arranged in a pattern (parts 2-9)
+     - Each with operation: "subtract"
+     - Each with targetPart: 0
+     - Creates decorative cutout pattern in the vase surface
+   - Torus at the bottom for a base (part 10)
+     - Set operation: "union"
+     - Set targetPart: 0
 
-    // If this is a refinement request, add context about the base model
-    if (isRefinement) {
-      systemPrompt = `
-You are a 3D modeling expert. Your task is to refine an existing 3D model specification based on the user's instructions.
-The user will provide modifications they want to make to an existing model.
+3. Architectural Column with Fluted Design:
+   - Cylinder for the main column shaft (part 0)
+   - Cylinder for the hollow interior (part 1)
+     - Set operation: "subtract"
+     - Set targetPart: 0
+   - Multiple small cylinders arranged around the perimeter (parts 2-9)
+     - Each with operation: "subtract"
+     - Each with targetPart: 0
+     - Creates fluted details on the column surface
+   - Torus for the base (part 10)
+     - Set operation: "union"
+     - Set targetPart: 0
+   - Torus for the capital (part 11)
+     - Set operation: "union"
+     - Set targetPart: 0
 
-The current model specification is:
+4. Mechanical Part with Holes and Details:
+   - Box for the main body (part 0)
+   - Multiple cylinders for bolt holes (parts 1-4)
+     - Each with operation: "subtract"
+     - Each with targetPart: 0
+   - Cylinder for a central bore (part 5)
+     - Set operation: "subtract"
+     - Set targetPart: 0
+   - Multiple boxes for detail features (parts 6-9)
+     - Some with operation: "union" to add details
+     - Some with operation: "subtract" to create recesses
+
+${isRefinement 
+  ? `Here's the original model specification:
 ${JSON.stringify(baseModel, null, 2)}
 
-Please create an updated model specification that incorporates the user's requested changes.
-The output should be a complete model specification (not just the changes) in the same format as the input.
+Apply the refinement based on this prompt, while maintaining the overall integrity of the model. You may add new parts, modify existing parts, or remove parts if needed. Remember to use CSG operations effectively to create complex details.`
+  : `Create a complete model specification based on the prompt. Be creative and detailed in your design. Use CSG operations extensively to create intricately detailed and realistic models beyond what simple primitive shapes could achieve alone.`
+}
 
-If the current model has only a single part and the user's refinement would benefit from a multi-part model, 
-feel free to convert it to a composition of multiple shapes while maintaining the overall concept.
-
-Respond ONLY with valid JSON. No markdown code blocks, no explanations, just the JSON object.
-`;
-    }
+Respond ONLY with the complete, valid JSON for the 3D model specification. The JSON should be directly parseable with JSON.parse().`;
 
     // Call Claude API
     try {
@@ -905,6 +1004,26 @@ function generateSampleModel(prompt: string) {
     parts: parts,
     description: description,
     customizationOptions: {
+      parameters: {
+        'scale': {
+          type: 'slider',
+          min: 0.5,
+          max: 2.0,
+          step: 0.1
+        },
+        'rotation': {
+          type: 'slider',
+          min: 0,
+          max: 360,
+          step: 15
+        },
+        'detail': {
+          type: 'slider',
+          min: 0,
+          max: 1,
+          step: 0.1
+        }
+      },
       materials: {
         types: ["standard", "basic", "phong", "physical", "lambert", "toon"],
         colors: [

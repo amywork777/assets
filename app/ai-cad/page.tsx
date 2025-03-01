@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect, useMemo } from "react"
 import * as THREE from "three"
-import { Canvas } from "@react-three/fiber"
-import { OrbitControls, Center, Grid, Environment } from "@react-three/drei"
+import { Canvas, useFrame, useThree } from "@react-three/fiber"
+import { OrbitControls, Center, Environment, PerspectiveCamera } from "@react-three/drei"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
@@ -13,6 +13,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { STLExporter } from 'three/addons/exporters/STLExporter.js'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { CSG } from 'three-csg-ts'
 
 interface ModelSpec {
   geometryType?: string
@@ -42,6 +43,8 @@ interface ModelSpec {
     }
     position: [number, number, number]
     rotation: [number, number, number]
+    operation?: string
+    targetPart?: number
   }>
   customizationOptions?: {
     parameters?: Record<string, {
@@ -76,22 +79,51 @@ const geometryMap: Record<string, any> = {
   'cone': THREE.ConeGeometry,
   'torus': THREE.TorusGeometry,
   'torusKnot': THREE.TorusKnotGeometry,
+  'ring': THREE.RingGeometry,
+  'plane': THREE.PlaneGeometry,
+  'circle': THREE.CircleGeometry,
+  'dodecahedron': THREE.DodecahedronGeometry,
+  'icosahedron': THREE.IcosahedronGeometry,
+  'octahedron': THREE.OctahedronGeometry,
+  'tetrahedron': THREE.TetrahedronGeometry,
+  'capsule': THREE.CapsuleGeometry
 }
 
-function DynamicModel({ modelSpec, meshRef }: { modelSpec: ModelSpec, meshRef: React.RefObject<THREE.Mesh> }) {
-  // Create a THREE.Group as a container for all the parts
+function DynamicModel({ modelSpec, meshRef }: { modelSpec: ModelSpec, meshRef: React.RefObject<THREE.Group | null> }) {
+  const { scene } = useThree();
+  
+  // Group to hold all parts of the model
   const groupRef = useRef<THREE.Group>(null);
   
-  // Map materials
-  const materialMap: Record<string, any> = {
-    "standard": THREE.MeshStandardMaterial,
-    "basic": THREE.MeshBasicMaterial,
-    "phong": THREE.MeshPhongMaterial,
-    "physical": THREE.MeshPhysicalMaterial,
-    "lambert": THREE.MeshLambertMaterial,
-    "toon": THREE.MeshToonMaterial
-  };
-
+  useEffect(() => {
+    // Forward the group ref to the parent's meshRef
+    if (groupRef.current && meshRef && meshRef.current !== groupRef.current) {
+      // Use object reference assignment instead of direct property assignment
+      Object.assign(meshRef, { current: groupRef.current });
+    }
+  }, [groupRef, meshRef]);
+  
+  // Calculate bounding box for the entire model to center it properly
+  useEffect(() => {
+    if (groupRef.current) {
+      const box = new THREE.Box3().setFromObject(groupRef.current);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      
+      // Center the model
+      groupRef.current.position.sub(center);
+      
+      // Calculate appropriate scale based on bounding box
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      if (maxDim > 10) {
+        const scale = 10 / maxDim;
+        groupRef.current.scale.set(scale, scale, scale);
+      }
+    }
+  }, [modelSpec]);
+  
   // Map geometries
   const geometryMap: Record<string, any> = {
     "box": THREE.BoxGeometry,
@@ -99,160 +131,263 @@ function DynamicModel({ modelSpec, meshRef }: { modelSpec: ModelSpec, meshRef: R
     "cylinder": THREE.CylinderGeometry,
     "cone": THREE.ConeGeometry,
     "torus": THREE.TorusGeometry,
-    "torusKnot": THREE.TorusKnotGeometry
+    "torusKnot": THREE.TorusKnotGeometry,
+    "ring": THREE.RingGeometry,
+    "plane": THREE.PlaneGeometry,
+    "circle": THREE.CircleGeometry,
+    "dodecahedron": THREE.DodecahedronGeometry,
+    "icosahedron": THREE.IcosahedronGeometry,
+    "octahedron": THREE.OctahedronGeometry,
+    "tetrahedron": THREE.TetrahedronGeometry,
+    "capsule": THREE.CapsuleGeometry
   };
-
-  // Forward the mesh reference to the parent component
-  useEffect(() => {
-    if (groupRef.current && meshRef) {
-      // For STL export compatibility, assign the first mesh to the meshRef if it exists
-      const firstMesh = groupRef.current.children[0] as THREE.Mesh;
-      if (firstMesh) {
-        // @ts-ignore: Object is possibly 'null'
-        meshRef.current = firstMesh;
-      }
+  
+  // Map materials
+  const materialMap: Record<string, any> = {
+    "standard": THREE.MeshStandardMaterial,
+    "physical": THREE.MeshPhysicalMaterial,
+    "basic": THREE.MeshBasicMaterial
+  };
+  
+  // Helper function to create geometry with appropriate parameters
+  function createGeometry(GeometryClass: any, parameters: Record<string, any>) {
+    // Box (width, height, depth)
+    if (GeometryClass === THREE.BoxGeometry) {
+      return new GeometryClass(
+        parameters.width || 1,
+        parameters.height || 1,
+        parameters.depth || 1,
+        parameters.widthSegments || 1,
+        parameters.heightSegments || 1,
+        parameters.depthSegments || 1
+      );
     }
-  }, [meshRef, modelSpec]);
-
-  // Check if we have a multi-part model or a single-part model
-  const isMultiPartModel = modelSpec.parts && modelSpec.parts.length > 0;
-
-  // If it's a single part model, render just one mesh
-  if (!isMultiPartModel && modelSpec.geometryType) {
-    const MaterialClass = materialMap[modelSpec.material?.type || "standard"];
-    const GeometryClass = geometryMap[modelSpec.geometryType];
     
-    const materialProps = {
-      color: modelSpec.material?.color || "#3B82F6",
-      ...(modelSpec.material?.metalness !== undefined && { metalness: modelSpec.material.metalness }),
-      ...(modelSpec.material?.roughness !== undefined && { roughness: modelSpec.material.roughness }),
-      ...(modelSpec.material?.emissive !== undefined && { emissive: new THREE.Color(modelSpec.material.emissive) }),
-      ...(modelSpec.material?.transparent !== undefined && { 
-        transparent: modelSpec.material.transparent,
-        opacity: modelSpec.material.opacity || 1.0
-      })
-    };
+    // Sphere (radius, widthSegments, heightSegments)
+    if (GeometryClass === THREE.SphereGeometry) {
+      return new GeometryClass(
+        parameters.radius || 1,
+        parameters.widthSegments || 32,
+        parameters.heightSegments || 16,
+        parameters.phiStart || 0,
+        parameters.phiLength || Math.PI * 2,
+        parameters.thetaStart || 0,
+        parameters.thetaLength || Math.PI
+      );
+    }
     
-    return (
-      <mesh 
-        ref={meshRef} 
-        position={modelSpec.position || [0, 0, 0]}
-        rotation={[
-          (modelSpec.rotation?.[0] || 0) * Math.PI / 180,
-          (modelSpec.rotation?.[1] || 0) * Math.PI / 180,
-          (modelSpec.rotation?.[2] || 0) * Math.PI / 180
-        ]}
-      >
-        <primitive object={createGeometry(GeometryClass, modelSpec.parameters || {})} attach="geometry" />
-        <primitive object={new MaterialClass(materialProps)} attach="material" />
-      </mesh>
-    );
+    // Cylinder (radiusTop, radiusBottom, height, radialSegments)
+    if (GeometryClass === THREE.CylinderGeometry) {
+      return new GeometryClass(
+        parameters.radiusTop || 1,
+        parameters.radiusBottom || 1,
+        parameters.height || 1,
+        parameters.radialSegments || 32,
+        parameters.heightSegments || 1,
+        parameters.openEnded || false
+      );
+    }
+    
+    // Cone (radius, height, radialSegments)
+    if (GeometryClass === THREE.ConeGeometry) {
+      return new GeometryClass(
+        parameters.radius || 1,
+        parameters.height || 1,
+        parameters.radialSegments || 32,
+        parameters.heightSegments || 1,
+        parameters.openEnded || false
+      );
+    }
+    
+    // Torus (radius, tube, radialSegments, tubularSegments)
+    if (GeometryClass === THREE.TorusGeometry) {
+      return new GeometryClass(
+        parameters.radius || 1,
+        parameters.tube || 0.4,
+        parameters.radialSegments || 16,
+        parameters.tubularSegments || 100,
+        parameters.arc || Math.PI * 2
+      );
+    }
+    
+    // TorusKnot (radius, tube, tubularSegments, radialSegments, p, q)
+    if (GeometryClass === THREE.TorusKnotGeometry) {
+      return new GeometryClass(
+        parameters.radius || 1,
+        parameters.tube || 0.4,
+        parameters.tubularSegments || 64,
+        parameters.radialSegments || 8,
+        parameters.p || 2,
+        parameters.q || 3
+      );
+    }
+    
+    // Ring (innerRadius, outerRadius, thetaSegments)
+    if (GeometryClass === THREE.RingGeometry) {
+      return new GeometryClass(
+        parameters.innerRadius || 0.5,
+        parameters.outerRadius || 1,
+        parameters.thetaSegments || 32,
+        parameters.phiSegments || 1,
+        parameters.thetaStart || 0,
+        parameters.thetaLength || Math.PI * 2
+      );
+    }
+    
+    // Plane (width, height, widthSegments, heightSegments)
+    if (GeometryClass === THREE.PlaneGeometry) {
+      return new GeometryClass(
+        parameters.width || 1,
+        parameters.height || 1,
+        parameters.widthSegments || 1,
+        parameters.heightSegments || 1
+      );
+    }
+    
+    // Circle (radius, segments)
+    if (GeometryClass === THREE.CircleGeometry) {
+      return new GeometryClass(
+        parameters.radius || 1,
+        parameters.segments || 32,
+        parameters.thetaStart || 0,
+        parameters.thetaLength || Math.PI * 2
+      );
+    }
+    
+    // Polyhedron geometries (radius, detail)
+    if (GeometryClass === THREE.DodecahedronGeometry ||
+        GeometryClass === THREE.IcosahedronGeometry ||
+        GeometryClass === THREE.OctahedronGeometry ||
+        GeometryClass === THREE.TetrahedronGeometry) {
+      return new GeometryClass(
+        parameters.radius || 1,
+        parameters.detail || 0
+      );
+    }
+    
+    // Capsule (radius, length, capSegments, radialSegments)
+    if (GeometryClass === THREE.CapsuleGeometry) {
+      return new GeometryClass(
+        parameters.radius || 1,
+        parameters.length || 1,
+        parameters.capSegments || 4,
+        parameters.radialSegments || 8
+      );
+    }
+    
+    // Default case
+    return new GeometryClass();
   }
   
-  // For multi-part models, render a group containing all parts
+  // Helper function to create material with appropriate parameters
+  function createMaterial(MaterialClass: any, parameters: Record<string, any>) {
+    return new MaterialClass({
+      color: parameters.color || '#ffffff',
+      metalness: parameters.metalness !== undefined ? parameters.metalness : 0.5,
+      roughness: parameters.roughness !== undefined ? parameters.roughness : 0.5,
+      wireframe: parameters.wireframe || false
+    });
+  }
+  
+  // Create meshes for each part with CSG operations
+  const meshes = useMemo(() => {
+    const result: Array<THREE.Mesh | null> = [];
+    
+    if (!modelSpec.parts) return result.filter((mesh): mesh is THREE.Mesh => mesh !== null);
+    
+    // First pass: create all base meshes
+    modelSpec.parts.forEach((part, index) => {
+      const GeometryClass = geometryMap[part.geometryType.toLowerCase()];
+      const MaterialClass = materialMap[part.material.type.toLowerCase()] || THREE.MeshStandardMaterial;
+      
+      if (!GeometryClass) {
+        console.error(`Unknown geometry type: ${part.geometryType}`);
+        return;
+      }
+      
+      const geometry = createGeometry(GeometryClass, part.parameters);
+      const material = createMaterial(MaterialClass, part.material);
+      
+      const mesh = new THREE.Mesh(geometry, material);
+      
+      // Apply position and rotation
+      const [px, py, pz] = part.position;
+      const [rx, ry, rz] = part.rotation.map(deg => (deg * Math.PI) / 180);
+      
+      mesh.position.set(px, py, pz);
+      mesh.rotation.set(rx, ry, rz);
+      
+      // Store the mesh
+      result[index] = mesh;
+    });
+    
+    // Second pass: perform CSG operations
+    modelSpec.parts.forEach((part, index) => {
+      if (part.operation && part.targetPart !== undefined) {
+        const targetMesh = result[part.targetPart];
+        const currentMesh = result[index];
+        
+        if (!targetMesh || !currentMesh) return;
+        
+        try {
+          // Create CSG objects
+          const targetCSG = CSG.fromMesh(targetMesh);
+          const currentCSG = CSG.fromMesh(currentMesh);
+          
+          let resultCSG;
+          
+          // Perform the requested operation
+          switch (part.operation.toLowerCase()) {
+            case 'union':
+              resultCSG = targetCSG.union(currentCSG);
+              break;
+            case 'subtract':
+              resultCSG = targetCSG.subtract(currentCSG);
+              break;
+            case 'intersect':
+              resultCSG = targetCSG.intersect(currentCSG);
+              break;
+            default:
+              return;
+          }
+          
+          // Convert the result back to a mesh
+          const resultMesh = CSG.toMesh(
+            resultCSG,
+            targetMesh.matrix,
+            targetMesh.material
+          );
+          
+          // Replace the target mesh with the result
+          result[part.targetPart] = resultMesh;
+          
+          // Remove the current mesh as it has been incorporated into the result
+          result[index] = null;
+        } catch (error) {
+          console.error('CSG operation failed:', error);
+        }
+      }
+    });
+    
+    // Filter out null meshes and ensure type safety
+    return result.filter((mesh): mesh is THREE.Mesh => mesh !== null);
+  }, [modelSpec.parts]);
+  
+  // Auto-rotate the model for visual appeal
+  useFrame(() => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y += 0.005;
+    }
+  });
+  
+  // Render all meshes
   return (
     <group ref={groupRef}>
-      {isMultiPartModel && modelSpec.parts?.map((part, index) => {
-        const MaterialClass = materialMap[part.material?.type || "standard"];
-        const GeometryClass = geometryMap[part.geometryType];
-        
-        const materialProps = {
-          color: part.material?.color || "#3B82F6",
-          ...(part.material?.metalness !== undefined && { metalness: part.material.metalness }),
-          ...(part.material?.roughness !== undefined && { roughness: part.material.roughness }),
-          ...(part.material?.emissive !== undefined && { emissive: new THREE.Color(part.material.emissive) }),
-          ...(part.material?.transparent !== undefined && { 
-            transparent: part.material.transparent,
-            opacity: part.material.opacity || 1.0
-          })
-        };
-        
-        return (
-          <mesh 
-            key={index}
-            position={part.position || [0, 0, 0]} 
-            rotation={[
-              (part.rotation?.[0] || 0) * Math.PI / 180,
-              (part.rotation?.[1] || 0) * Math.PI / 180,
-              (part.rotation?.[2] || 0) * Math.PI / 180
-            ]}
-            ref={index === 0 ? meshRef : undefined}
-          >
-            <primitive object={createGeometry(GeometryClass, part.parameters || {})} attach="geometry" />
-            <primitive object={new MaterialClass(materialProps)} attach="material" />
-          </mesh>
-        );
-      })}
+      {meshes.map((mesh, index) => (
+        <primitive key={index} object={mesh} />
+      ))}
     </group>
   );
-}
-
-// Helper function to create geometry with appropriate parameters
-function createGeometry(GeometryClass: any, parameters: Record<string, any>) {
-  // Box (width, height, depth)
-  if (GeometryClass === THREE.BoxGeometry) {
-    return new GeometryClass(
-      parameters.width || 1,
-      parameters.height || 1,
-      parameters.depth || 1,
-      parameters.widthSegments || 1,
-      parameters.heightSegments || 1,
-      parameters.depthSegments || 1
-    );
-  }
-  
-  // Sphere (radius, widthSegments, heightSegments)
-  if (GeometryClass === THREE.SphereGeometry) {
-    return new GeometryClass(
-      parameters.radius || 1,
-      parameters.widthSegments || 32,
-      parameters.heightSegments || 16
-    );
-  }
-  
-  // Cylinder (radiusTop, radiusBottom, height, radialSegments)
-  if (GeometryClass === THREE.CylinderGeometry) {
-    return new GeometryClass(
-      parameters.radiusTop || 1,
-      parameters.radiusBottom || 1,
-      parameters.height || 1,
-      parameters.radialSegments || 32
-    );
-  }
-  
-  // Cone (radius, height, radialSegments)
-  if (GeometryClass === THREE.ConeGeometry) {
-    return new GeometryClass(
-      parameters.radius || 1,
-      parameters.height || 1,
-      parameters.radialSegments || 32
-    );
-  }
-  
-  // Torus (radius, tube, radialSegments, tubularSegments)
-  if (GeometryClass === THREE.TorusGeometry) {
-    return new GeometryClass(
-      parameters.radius || 1,
-      parameters.tube || 0.4,
-      parameters.radialSegments || 16,
-      parameters.tubularSegments || 100
-    );
-  }
-  
-  // TorusKnot (radius, tube, tubularSegments, radialSegments, p, q)
-  if (GeometryClass === THREE.TorusKnotGeometry) {
-    return new GeometryClass(
-      parameters.radius || 1,
-      parameters.tube || 0.4,
-      parameters.tubularSegments || 64,
-      parameters.radialSegments || 8,
-      parameters.p || 2,
-      parameters.q || 3
-    );
-  }
-  
-  // Default case
-  return new GeometryClass();
 }
 
 function isUsingApiGeneration(modelSpec: ModelSpec | null): boolean {
@@ -283,15 +418,42 @@ export default function AICadPage() {
   });
   const [generationMethod, setGenerationMethod] = useState<string | null>(null);
   const [refinementPrompt, setRefinementPrompt] = useState("");
-  const modelRef = useRef<THREE.Mesh>(null);
+  const modelRef = useRef<THREE.Group | null>(null);
 
-  // Update params when model changes
+  // Initialize params and material based on the model spec
   useEffect(() => {
     if (modelSpec) {
-      setCurrentParams({...modelSpec.parameters});
+      // Initialize parameters from customizationOptions
+      const initialParams: Record<string, any> = {};
+      
+      // First, add any parameters defined in modelSpec.parameters
+      if (modelSpec.parameters) {
+        Object.keys(modelSpec.parameters).forEach(key => {
+          initialParams[key] = modelSpec.parameters![key];
+        });
+      }
+      
+      // Then, add any parameters defined in customizationOptions with default values
+      if (modelSpec.customizationOptions?.parameters) {
+        Object.entries(modelSpec.customizationOptions.parameters).forEach(([key, options]) => {
+          if (!initialParams[key]) {
+            if (options.type === 'slider') {
+              initialParams[key] = ((options.min || 0) + (options.max || 1)) / 2; // default to middle value
+            } else if (options.type === 'select' && options.options && options.options.length > 0) {
+              initialParams[key] = options.options[0]; // default to first option
+            } else if (options.type === 'boolean') {
+              initialParams[key] = false; // default to false
+            }
+          }
+        });
+      }
+      
+      setCurrentParams(initialParams);
+      
+      // Initialize material
       setCurrentMaterial({
-        type: modelSpec.material?.type || 'standard',
-        color: modelSpec.material?.color || '#ffffff',
+        type: modelSpec.material?.type || "standard",
+        color: modelSpec.material?.color || "#ffffff",
         metalness: modelSpec.material?.metalness || 0,
         roughness: modelSpec.material?.roughness || 0.5,
         transparent: modelSpec.material?.transparent || false,
@@ -377,92 +539,43 @@ export default function AICadPage() {
     setLoading(false);
   };
 
-  const handleExportSTL = async () => {
+  const handleExportSTL = () => {
     if (!modelRef.current) {
-      console.error('No model mesh available for STL export');
+      alert("No model to export!");
       return;
     }
-
+    
     try {
       setLoading(true);
-
-      // Check if the model is a group (multi-part) or a single mesh
-      if (modelRef.current.parent && modelRef.current.parent.type === 'Group') {
-        // Handle multi-part model
-        const group = modelRef.current.parent as THREE.Group;
-        const meshes = group.children.filter(child => child.type === 'Mesh') as THREE.Mesh[];
-        
-        if (meshes.length === 0) {
-          throw new Error('No meshes found in the group for STL export');
-        }
-        
-        // Clone and position geometries according to their world positions
-        const geometries: THREE.BufferGeometry[] = [];
-        meshes.forEach(mesh => {
-          const clonedGeometry = mesh.geometry.clone();
-          
-          // Apply mesh's position, rotation, and scale to the geometry
-          mesh.updateMatrix();
-          clonedGeometry.applyMatrix4(mesh.matrix);
-          
-          geometries.push(clonedGeometry);
-        });
-        
-        // Merge all geometries into a single one
-        const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries);
-        const tempMesh = new THREE.Mesh(mergedGeometry);
-        
-        // Generate STL data from the merged geometry
-        const exporter = new STLExporter();
-        const stlData = exporter.parse(tempMesh);
-        
-        // Create a blob from the STL data
-        const blob = new Blob([stlData], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        
-        // Trigger download
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${updatedModelSpec?.description || 'model'}.stl`.replace(/\s+/g, '_').slice(0, 30);
-        link.click();
-        
-        // Clean up
-        URL.revokeObjectURL(url);
-      } else {
-        // Handle single mesh model (original implementation)
-        const mesh = modelRef.current;
-        
-        // Clone the mesh geometry to avoid modifying the original
-        const clonedGeometry = mesh.geometry.clone();
-        
-        // Create a new mesh with the cloned geometry
-        const tempMesh = new THREE.Mesh(clonedGeometry);
-        
-        // Apply the mesh's transformations
-        mesh.updateMatrix();
-        tempMesh.applyMatrix4(mesh.matrix);
-        
-        // Generate STL data
-        const exporter = new STLExporter();
-        const stlData = exporter.parse(tempMesh);
-        
-        // Create a blob from the STL data
-        const blob = new Blob([stlData], { type: 'application/octet-stream' });
-        const url = URL.createObjectURL(blob);
-        
-        // Trigger download
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${updatedModelSpec?.description || 'model'}.stl`.replace(/\s+/g, '_').slice(0, 30);
-        link.click();
-        
-        // Clean up
-        URL.revokeObjectURL(url);
-      }
+      
+      // Clone the model to avoid modifying the original
+      const clone = modelRef.current.clone();
+      
+      // Apply transformations to the clone
+      clone.updateMatrixWorld(true);
+      
+      // Create an STL exporter
+      const exporter = new STLExporter();
+      
+      // Export the model as STL (using binary format for smaller file size)
+      const stlData = exporter.parse(clone, { binary: true });
+      
+      // Create a blob from the STL data
+      const blob = new Blob([stlData], { type: 'application/octet-stream' });
+      
+      // Create a download link
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `model-${Date.now()}.stl`;
+      link.click();
+      
+      // Clean up
+      URL.revokeObjectURL(link.href);
+      
+      setLoading(false);
     } catch (error) {
       console.error('Error exporting STL:', error);
-      alert('Failed to export STL file. Please try again.');
-    } finally {
+      alert('Failed to export STL file. See console for details.');
       setLoading(false);
     }
   };
@@ -549,7 +662,6 @@ export default function AICadPage() {
                 <ambientLight intensity={0.5} />
                 <pointLight position={[10, 10, 10]} intensity={1} />
                 <OrbitControls enableDamping dampingFactor={0.1} />
-                <Grid infiniteGrid fadeDistance={30} fadeStrength={5} />
                 <Environment preset="city" />
                 {updatedModelSpec && <DynamicModel modelSpec={updatedModelSpec} meshRef={modelRef} />}
                 {!updatedModelSpec && (
