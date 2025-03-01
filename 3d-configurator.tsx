@@ -14,6 +14,7 @@ import { DoubleSide } from 'three'
 import Image from 'next/image'
 import { cloneDeep } from 'lodash'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import Link from 'next/link'
 
 interface PriceInfo {
   dimensions: string;
@@ -35,9 +36,9 @@ interface CategoryInfo {
 }
 
 const categories: Record<string, CategoryInfo> = {
-  lampshade: {
-    name: "Lampshade",
-    description: "Create ambient lighting with customizable patterns. For custom dimensions or special requests, use our Custom Order button.",
+  cylinderBase: {
+    name: "Base",
+    description: "Solid bases for lamps, vases, or display stands. Simple, clean design with top and bottom closed. Choose from cylinder, star, or square shapes. For custom dimensions or special requests, use our Custom Order button.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -56,20 +57,145 @@ const categories: Record<string, CategoryInfo> = {
       }
     },
     defaults: {
-      type: 'standard' as const,
-      height: 30,
-      topRadius: 15,
-      bottomRadius: 12,
-      waveAmplitude: 1.5,
-      waveFrequency: 6,
-      twist: 0,
-      hasBottom: false,
-      material: "shiny" as const,
+      type: "cylinderBase",
+      shape: "flower",
+      material: "shiny",
+      height: 8,
+      diameter: 10,
+      flowerPetals: 5,
+      petalPointiness: 0.8,
     },
   },
-  vase: {
-    name: "Vase",
-    description: "Create elegant vases for flowers and decorative displays. For custom dimensions or special requests, use our Custom Order button.",
+  phoneHolder: {
+    name: "Phone Holder",
+    description: "A customizable phone holder for your desk.",
+    priceInfo: {
+      small: {
+        dimensions: "4 x 4 x 5 in",
+        price: 18.99,
+        priceId: "price_1Ot41TI0wQgEQ20bwwJFuJZt"
+      },
+      medium: {
+        dimensions: "5 x 5 x 6 in",
+        price: 24.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'phoneHolder',
+      material: 'shiny',
+      baseWidth: 4,
+      baseDepth: 4,
+      height: 5,
+      angle: 60,
+      phoneThickness: 0.5,
+      lipHeight: 0.75,
+      cableOpening: true,
+      standThickness: 0.8, // Default thickness of 0.8 inches (thicker than before)
+    }
+  },
+  pencilHolder: {
+    name: "Pencil Holder",
+    description: "A customizable container for pens, pencils, and stationery.",
+    priceInfo: {
+      small: {
+        dimensions: "3 x 3 x 3.5 in",
+        price: 19.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "3.5 x 3.5 x 4 in",
+        price: 24.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'pencilHolder',
+      shape: 'square',
+      material: 'shiny',
+      height: 3.5,
+      diameter: 3,
+      wallThickness: 0.2,
+      dividerType: 'grid',
+      dividerCount: 2,
+      hasBottom: true
+    }
+  },
+  napkinHolder: {
+    name: 'Napkin Holder',
+    description: 'Elegant napkin holder with two upright panels to keep napkins organized and accessible.',
+    priceInfo: {
+      small: { dimensions: '6"W × 3"D × 4"H', price: 29.99, priceId: 'price_napkinholder_small' },
+      medium: { dimensions: '7"W × 3.5"D × 5"H', price: 39.99, priceId: 'price_napkinholder_medium' },
+    },
+    defaults: {
+      type: 'napkinHolder',
+      material: 'shiny',
+      baseWidth: 6,
+      baseDepth: 3,
+      baseHeight: 0.75,
+      wallThickness: 0.2,
+      wallHeight: 4,
+      wallStyle: 'curved',
+      openingWidth: 5,
+    },
+  },
+  bracelet: {
+    name: "Bracelet",
+    description: "A customizable bracelet with opening for your wrist.",
+    priceInfo: {
+      small: {
+        dimensions: "2.5 x 0.25 x 0.3 in",
+        price: 19.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "2.8 x 0.3 x 0.4 in",
+        price: 24.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'bracelet',
+      material: 'shiny',
+      innerDiameter: 2.5,
+      thickness: 0.25,
+      width: 0.3,
+      gapSize: 40, // 40 degrees opening
+      patternType: 'plain',
+      patternDepth: 0.1,
+      patternScale: 0.5
+    }
+  },
+  ring: {
+    name: "Ring",
+    description: "A customizable ring that can be adjusted to your finger size.",
+    priceInfo: {
+      small: {
+        dimensions: "0.8 x 0.2 x 0.1 in",
+        price: 14.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "1.0 x 0.3 x 0.15 in",
+        price: 19.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'ring',
+      material: 'shiny',
+      innerDiameter: 0.8,
+      thickness: 0.1,
+      width: 0.25,
+      patternType: 'plain',
+      patternScale: 1.0,
+      gapSize: 0
+    }
+  },
+  coaster: {
+    name: "Decorative Coaster",
+    description: "Stylish protection for your surfaces with unique patterns. For custom dimensions or special requests, use our Custom Order button.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -88,16 +214,69 @@ const categories: Record<string, CategoryInfo> = {
       }
     },
     defaults: {
-      type: 'standard' as const,
-      height: 25,
-      topRadius: 12,
-      bottomRadius: 8,
-      waveAmplitude: 1,
-      waveFrequency: 4,
-      twist: 0,
+      type: 'coaster' as const,
+      diameter: 24,
+      thickness: 6,
+      patternType: 'hexagonal' as const,
+      patternScale: 2,
+      patternDepth: 1,
+      rimHeight: 2,
       hasBottom: true,
       material: "shiny" as const,
     },
+  },
+  monitorStand: {
+    name: "Monitor Stand",
+    description: "Elevate your monitor for improved ergonomics and organize your desk space.",
+    priceInfo: {
+      small: {
+        dimensions: "12 x 8 x 3 in",
+        price: 34.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "16 x 9 x 4 in",
+        price: 44.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'monitorStand',
+      material: 'matte',
+      width: 14,
+      depth: 8,
+      height: 3.5,
+      thickness: 0.8,
+      legStyle: 'minimal'
+    }
+  },
+  jewelryHolder: {
+    name: "Jewelry Holder",
+    description: "An elegant organizer for necklaces, earrings, and other jewelry items with customizable pegs.",
+    priceInfo: {
+      small: {
+        dimensions: "5 x 5 x 6 in",
+        price: 29.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      },
+      medium: {
+        dimensions: "6 x 6 x 8 in",
+        price: 39.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'jewelryHolder',
+      material: 'shiny',
+      baseWidth: 5,
+      baseDepth: 5,
+      baseHeight: 1,
+      baseStyle: 'round',
+      pegHeight: 4,
+      pegDiameter: 0.4,
+      pegArrangement: 'circular',
+      pegCount: 5
+    }
   },
   bowl: {
     name: "Bowl",
@@ -123,37 +302,6 @@ const categories: Record<string, CategoryInfo> = {
       type: 'bowl' as const,
       height: 8,
       diameter: 20,
-      patternType: 'geometric' as const,
-      patternScale: 2,
-      patternDepth: 0.5,
-      twist: 0,
-      material: "shiny" as const,
-    },
-  },
-  candleHolder: {
-    name: "Cup",
-    description: "Decorative cups with textured patterns. ⚠️ Note: Not intended for food or beverage use. For decorative purposes only. For custom dimensions or special requests, use our Custom Order button.",
-    priceInfo: {
-      mini: {
-        dimensions: "2\" × 2\" × 2\"",
-        price: 25,
-        priceId: "price_1QmGnoCLoBz9jXRliwBcAA5a"
-      },
-      small: {
-        dimensions: "3.5\" × 3.5\" × 3.5\"",
-        price: 35,
-        priceId: "price_1QmGpfCLoBz9jXRlBcrkWyUj"
-      },
-      medium: {
-        dimensions: "5\" × 5\" × 5\"",
-        price: 45,
-        priceId: "price_1QmGquCLoBz9jXRlh9SG2fqs"
-      }
-    },
-    defaults: {
-      type: 'candleHolder' as const,
-      height: 12,
-      diameter: 8,
       patternType: 'geometric' as const,
       patternScale: 2,
       patternDepth: 0.5,
@@ -192,9 +340,9 @@ const categories: Record<string, CategoryInfo> = {
       material: "shiny" as const,
     },
   },
-  coaster: {
-    name: "Decorative Coaster",
-    description: "Stylish protection for your surfaces with unique patterns. For custom dimensions or special requests, use our Custom Order button.",
+  vase: {
+    name: "Vase",
+    description: "Create elegant vases for flowers and decorative displays. For custom dimensions or special requests, use our Custom Order button.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -213,20 +361,21 @@ const categories: Record<string, CategoryInfo> = {
       }
     },
     defaults: {
-      type: 'coaster' as const,
-      diameter: 24,
-      thickness: 6,
-      patternType: 'hexagonal' as const,
-      patternScale: 2,
-      patternDepth: 1,
-      rimHeight: 2,
+      type: 'standard' as const,
+      height: 25,
+      topRadius: 12,
+      bottomRadius: 8,
+      waveAmplitude: 1,
+      waveFrequency: 4,
+      twist: 0,
       hasBottom: true,
+      hasTop: false,  // Top open
       material: "shiny" as const,
     },
   },
-  cylinderBase: {
-    name: "Base",
-    description: "Solid bases for lamps, vases, or display stands. Simple, clean design with top and bottom closed. Choose from cylinder, star, or square shapes. For custom dimensions or special requests, use our Custom Order button.",
+  candleHolder: {
+    name: "Cup",
+    description: "Decorative cups with textured patterns. ⚠️ Note: Not intended for food or beverage use. For decorative purposes only. For custom dimensions or special requests, use our Custom Order button.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -245,96 +394,48 @@ const categories: Record<string, CategoryInfo> = {
       }
     },
     defaults: {
-      type: "cylinderBase",
-      shape: "cylinder",
-      material: "matte",
-      height: 8,
-      diameter: 10,
-      flowerPetals: 5,
-      petalPointiness: 0.8,
+      type: 'candleHolder' as const,
+      height: 12,
+      diameter: 8,
+      patternType: 'geometric' as const,
+      patternScale: 2,
+      patternDepth: 0.5,
+      twist: 0,
+      material: "shiny" as const,
     },
   },
-  phoneHolder: {
-    name: "Phone Holder",
-    description: "A customizable phone holder for your desk.",
+  lampshade: {
+    name: "Lampshade",
+    description: "Create ambient lighting with customizable patterns. For custom dimensions or special requests, use our Custom Order button.",
     priceInfo: {
+      mini: {
+        dimensions: "2\" × 2\" × 2\"",
+        price: 25,
+        priceId: "price_1QmGnoCLoBz9jXRliwBcAA5a"
+      },
       small: {
-        dimensions: "4 x 4 x 5 in",
-        price: 18.99,
-        priceId: "price_1Ot41TI0wQgEQ20bwwJFuJZt"
+        dimensions: "3.5\" × 3.5\" × 3.5\"",
+        price: 35,
+        priceId: "price_1QmGpfCLoBz9jXRlBcrkWyUj"
       },
       medium: {
-        dimensions: "5 x 5 x 6 in",
-        price: 24.99,
-        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+        dimensions: "5\" × 5\" × 5\"",
+        price: 45,
+        priceId: "price_1QmGquCLoBz9jXRlh9SG2fqs"
       }
     },
     defaults: {
-      type: 'phoneHolder',
-      material: 'shiny',
-      baseWidth: 4,
-      baseDepth: 4,
-      height: 5,
-      angle: 60,
-      phoneThickness: 0.5,
-      lipHeight: 0.75,
-      cableOpening: true,
-      standThickness: 0.8, // Default thickness of 0.8 inches (thicker than before)
-    }
-  },
-  bracelet: {
-    name: "Bracelet",
-    description: "A customizable bracelet with opening for your wrist.",
-    priceInfo: {
-      small: {
-        dimensions: "2.5 x 0.25 x 0.3 in",
-        price: 19.99,
-        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
-      },
-      medium: {
-        dimensions: "2.8 x 0.3 x 0.4 in",
-        price: 24.99,
-        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
-      }
+      type: 'standard' as const,
+      height: 30,
+      topRadius: 15,
+      bottomRadius: 12,
+      waveAmplitude: 1.5,
+      waveFrequency: 6,
+      twist: 0,
+      hasBottom: false, // Bottom open
+      hasTop: false,    // Top open
+      material: "shiny" as const,
     },
-    defaults: {
-      type: 'bracelet',
-      material: 'shiny',
-      innerDiameter: 2.5,
-      thickness: 0.25,
-      width: 0.3,
-      gapSize: 40, // 40 degrees opening
-      patternType: 'plain',
-      patternDepth: 0.1,
-      patternScale: 0.5
-    }
-  },
-  pencilHolder: {
-    name: "Pencil Holder",
-    description: "A customizable container for pens, pencils, and stationery.",
-    priceInfo: {
-      small: {
-        dimensions: "3 x 3 x 3.5 in",
-        price: 19.99,
-        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
-      },
-      medium: {
-        dimensions: "3.5 x 3.5 x 4 in",
-        price: 24.99,
-        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
-      }
-    },
-    defaults: {
-      type: 'pencilHolder',
-      shape: 'square',
-      material: 'shiny',
-      height: 3.5,
-      diameter: 3,
-      wallThickness: 0.2,
-      dividerType: 'grid',
-      dividerCount: 2,
-      hasBottom: true
-    }
   },
   charmAttachment: {
     name: "Charm Attachment",
@@ -360,70 +461,6 @@ const categories: Record<string, CategoryInfo> = {
       material: 'shiny'
     }
   },
-  ring: {
-    name: "Ring",
-    description: "A customizable ring with various design options.",
-    priceInfo: {
-      small: {
-        dimensions: "0.75 in diameter",
-        price: 29.99,
-        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
-      },
-      medium: {
-        dimensions: "0.85 in diameter",
-        price: 34.99,
-        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
-      }
-    },
-    defaults: {
-      type: 'ring',
-      material: 'slate',
-      innerDiameter: 0.75,
-      thickness: 0.08,
-      width: 0.25,
-      patternType: 'plain',
-      patternScale: 1,
-      gapSize: 40,
-    },
-  },
-  monitorStand: {
-    name: "Monitor Stand",
-    description: "Elevate your monitor with our customizable monitor stand.",
-    priceInfo: {
-      small: { dimensions: '12"W × 8"D × 4"H', price: 59.99, priceId: 'price_monitorstand_small' },
-      medium: { dimensions: '16"W × 10"D × 5"H', price: 79.99, priceId: 'price_monitorstand_medium' },
-    },
-    defaults: {
-      type: 'monitorStand',
-      material: 'shiny',
-      width: 16,
-      depth: 10,
-      height: 5,
-      thickness: 1,
-      legStyle: 'minimal',
-    },
-  },
-  jewelryHolder: {
-    name: 'Jewelry Holder',
-    description: 'Organize and display your jewelry with our customizable holder.',
-    priceInfo: {
-      small: { dimensions: '6"W × 6"D × 6"H', price: 39.99, priceId: 'price_jewelryholder_small' },
-      medium: { dimensions: '8"W × 8"D × 8"H', price: 49.99, priceId: 'price_jewelryholder_medium' },
-    },
-    defaults: {
-      type: 'jewelryHolder',
-      material: 'shiny',
-      baseWidth: 6,
-      baseDepth: 6,
-      baseHeight: 0.75,
-      baseStyle: 'square',
-      pegHeight: 5,
-      pegDiameter: 0.4,
-      pegArrangement: 'circular',
-      pegCount: 7,
-      pegBranchStyle: 'simple',
-    },
-  },
 } as const
 
 const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams) => {
@@ -436,6 +473,8 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
         { id: "waveAmplitude" as const, label: "Wave Amplitude (in)", min: 0, max: 2, step: 0.1 },
         { id: "waveFrequency" as const, label: "Wave Frequency", min: 0, max: 16, step: 0.1 },
         { id: "twist" as const, label: "Twist (turns)", min: 0, max: 3, step: 0.1 },
+        { id: "hasBottom" as const, label: "Has Bottom", min: 0, max: 1, step: 1 },
+        { id: "hasTop" as const, label: "Has Top", min: 0, max: 1, step: 1 },
       ] as const
     case 'wallArt':
       return [
@@ -533,7 +572,16 @@ const getControlsForType = (type: ShapeParams['type'], shapeParams: ShapeParams)
         { id: "baseHeight" as const, label: "Base Height (in)", min: 0.5, max: 2, step: 0.1 },
         { id: "pegHeight" as const, label: "Peg Height (in)", min: 2, max: 8, step: 0.5 },
         { id: "pegDiameter" as const, label: "Peg Diameter (in)", min: 0.2, max: 1, step: 0.1 },
-        { id: "pegCount" as const, label: "Number of Pegs", min: 3, max: 15, step: 1 },
+        { id: "pegCount" as const, label: "Number of Branches", min: 3, max: 8, step: 1 },
+      ] as const
+    case 'napkinHolder':
+      return [
+        { id: "baseWidth" as const, label: "Base Width (in)", min: 4, max: 8, step: 0.5 },
+        { id: "baseDepth" as const, label: "Base Depth (in)", min: 4, max: 8, step: 0.5 },
+        { id: "baseHeight" as const, label: "Base Height (in)", min: 0.5, max: 1.5, step: 0.1 },
+        { id: "wallThickness" as const, label: "Wall Thickness (in)", min: 0.1, max: 0.5, step: 0.05 },
+        { id: "wallHeight" as const, label: "Wall Height (in)", min: 1, max: 5, step: 0.5 },
+        { id: "openingWidth" as const, label: "Opening Width (in)", min: 2, max: 5, step: 0.5 },
       ] as const
     default:
       return []
@@ -605,6 +653,7 @@ interface StandardShapeParams extends BaseShapeParams {
   waveFrequency: number
   twist: number
   hasBottom: boolean
+  hasTop?: boolean  // New property to control top cap
 }
 
 interface CoasterShapeParams extends BaseShapeParams {
@@ -728,10 +777,20 @@ interface JewelryHolderParams extends BaseShapeParams {
   pegDiameter: number; // Diameter of the pegs in inches
   pegArrangement: 'linear' | 'circular' | 'scattered'; // Arrangement pattern of pegs
   pegCount: number; // Number of pegs for jewelry items
-  pegBranchStyle: 'simple' | 'tree' | 'cross'; // Style of branches on pegs
 }
 
-type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams | RingParams | MonitorStandParams | JewelryHolderParams
+interface NapkinHolderParams extends BaseShapeParams {
+  type: 'napkinHolder';
+  baseWidth: number;
+  baseDepth: number;
+  baseHeight: number;
+  wallThickness: number;
+  wallHeight: number;
+  wallStyle: 'curved' | 'straight';
+  openingWidth: number;
+}
+
+type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams | RingParams | MonitorStandParams | JewelryHolderParams | NapkinHolderParams
 
 interface ParametricShapeProps {
   params: ShapeParams
@@ -745,6 +804,42 @@ interface SceneProps {
 function Scene({ params }: SceneProps) {
   const { meshRef, ...shapeParams } = params
   
+  // Product-specific scale adjustments
+  const getProductScale = () => {
+    switch (shapeParams.type) {
+      case 'standard':
+        return 0.35; // Increase scale for small objects (cups, vases)
+      case 'coaster':
+        return 0.4; // Increase scale for small objects
+      case 'wallArt':
+        return 0.25; // Increase scale for small objects
+      case 'candleHolder':
+        return 0.55; // Keep as is
+      case 'bowl':
+        return 0.35; // Increase scale for small objects
+      case 'cylinderBase':
+        return 0.35; // Increase scale for small objects (lampshades)
+      case 'phoneHolder':
+        return 0.55; // Keep as is
+      case 'bracelet':
+        return 0.9; // Keep as is
+      case 'pencilHolder':
+        return 0.6; // Keep as is
+      case 'charmAttachment':
+        return 0.9; // Keep as is
+      case 'ring':
+        return 1.2; // Increase scale for very small objects
+      case 'monitorStand':
+        return 0.5; // Keep as is
+      case 'jewelryHolder':
+        return 0.55; // Keep as is
+      case 'napkinHolder':
+        return 0.55; // Keep as is
+      default:
+        return 0.55; // Keep default as is
+    }
+  };
+  
   return (
     <>
       <color attach="background" args={["#1a1a1a"]} />
@@ -752,7 +847,7 @@ function Scene({ params }: SceneProps) {
       <spotLight position={[10, 10, 10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
       <spotLight position={[-10, 10, -10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
       <spotLight position={[0, -10, 0]} angle={0.4} penumbra={0.8} intensity={1} castShadow />
-      <Center scale={0.5} position={[0, 0, 0]}>
+      <Center scale={getProductScale()} position={[0, 0, 0]}>
         <ParametricShape params={shapeParams} meshRef={meshRef} />
       </Center>
       <Environment preset="studio" background={false} />
@@ -917,7 +1012,8 @@ function generateStandardGeometry(params: StandardShapeParams) {
     waveAmplitude: waveAmplitudeInches, 
     waveFrequency, 
     twist, 
-    hasBottom 
+    hasBottom,
+    hasTop = true  // Default to true for backward compatibility
   } = params
   const height = inchesToCm(heightInches)
   const topRadius = inchesToCm(topRadiusInches)
@@ -989,6 +1085,41 @@ function generateStandardGeometry(params: StandardShapeParams) {
     for (let i = 0; i < segments; i++) {
       indices.push(baseIndex, baseIndex + i + 1, baseIndex + i + 2)
     }
+    
+    // Fix the last triangle to close the bottom cap properly
+    indices.push(baseIndex, baseIndex + segments, baseIndex + 1);
+  }
+  
+  // Add top cap if needed (was previously always added)
+  if (hasTop) {
+    const topIndex = vertices.length / 3
+    vertices.push(0, height / 2, 0)
+    normals.push(0, 1, 0)
+
+    for (let i = 0; i <= segments; i++) {
+      const theta = (i / segments) * Math.PI * 2
+      // Apply twist to the top cap for consistency
+      const twistAngle = twist * Math.PI * 2
+      const finalTheta = theta + twistAngle
+      
+      // Apply wave pattern at the top for consistency
+      const waveOffset = Math.sin(Math.PI * waveFrequency) * waveAmplitude
+      const finalTopRadius = topRadius + waveOffset
+      
+      const x = Math.cos(finalTheta) * finalTopRadius
+      const z = Math.sin(finalTheta) * finalTopRadius
+      vertices.push(x, height / 2, z)
+      normals.push(0, 1, 0)
+    }
+
+    // Connect top cap triangles in REVERSE order compared to bottom cap
+    // This ensures proper orientation (facing outward) for the top cap
+    for (let i = 0; i < segments; i++) {
+      indices.push(topIndex, topIndex + i + 2, topIndex + i + 1)
+    }
+    
+    // Fix the last triangle to close the top cap properly
+    indices.push(topIndex, topIndex + 1, topIndex + segments);
   }
 
   return { vertices, indices, normals }
@@ -2040,89 +2171,96 @@ function generateBraceletGeometry(params: BraceletParams) {
     normals.push(0, -1, 0); // Bottom face normal
   }
   
-  // Create indices for the top and bottom faces
+  // Generate triangles for the top and bottom faces
+  const topFaceStartIndex = 0;
+  const bottomFaceStartIndex = (actualSegments + 1) * 2;
+  
+  // Top face triangles
   for (let i = 0; i < actualSegments; i++) {
-    // Top face indices (0 to segments*2-1)
-    const topInnerCurrent = i * 2;
-    const topOuterCurrent = i * 2 + 1;
-    const topInnerNext = (i + 1) * 2;
-    const topOuterNext = (i + 1) * 2 + 1;
+    const innerIndex = topFaceStartIndex + i * 2;
+    const outerIndex = innerIndex + 1;
+    const nextInnerIndex = innerIndex + 2;
+    const nextOuterIndex = outerIndex + 2;
     
-    // Create two triangles for the top face
-    indices.push(
-      topInnerCurrent, topOuterCurrent, topInnerNext,
-      topOuterCurrent, topOuterNext, topInnerNext
-    );
-    
-    // Bottom face indices (segments*2 to segments*4-1)
-    const bottomInnerCurrent = (actualSegments + 1) * 2 + i * 2;
-    const bottomOuterCurrent = (actualSegments + 1) * 2 + i * 2 + 1;
-    const bottomInnerNext = (actualSegments + 1) * 2 + (i + 1) * 2;
-    const bottomOuterNext = (actualSegments + 1) * 2 + (i + 1) * 2 + 1;
-    
-    // Create two triangles for the bottom face (reverse winding)
-    indices.push(
-      bottomInnerCurrent, bottomInnerNext, bottomOuterCurrent,
-      bottomOuterCurrent, bottomInnerNext, bottomOuterNext
-    );
-    
-    // Connect the top and bottom faces to create the sides
-    // Inner wall
-    indices.push(
-      topInnerCurrent, topInnerNext, bottomInnerCurrent,
-      bottomInnerCurrent, topInnerNext, bottomInnerNext
-    );
-    
-    // Outer wall (with pattern)
-    indices.push(
-      topOuterCurrent, bottomOuterCurrent, topOuterNext,
-      bottomOuterCurrent, bottomOuterNext, topOuterNext
-    );
+    // Create two triangles for each quad on the top face
+    indices.push(innerIndex, outerIndex, nextInnerIndex);
+    indices.push(nextInnerIndex, outerIndex, nextOuterIndex);
   }
   
-  // Now add faces for the ends of the C shape where the gap is
-  // First end
-  const firstTopInner = 0;
-  const firstTopOuter = 1;
-  const firstBottomInner = (actualSegments + 1) * 2;
-  const firstBottomOuter = (actualSegments + 1) * 2 + 1;
-  
-  // Create triangles for the first end
-  indices.push(
-    firstTopInner, firstBottomInner, firstTopOuter,
-    firstTopOuter, firstBottomInner, firstBottomOuter
-  );
-  
-  // Second end
-  const lastTopInner = actualSegments * 2;
-  const lastTopOuter = actualSegments * 2 + 1;
-  const lastBottomInner = (actualSegments + 1) * 2 + actualSegments * 2;
-  const lastBottomOuter = (actualSegments + 1) * 2 + actualSegments * 2 + 1;
-  
-  // Create triangles for the second end
-  indices.push(
-    lastTopInner, lastTopOuter, lastBottomInner,
-    lastBottomInner, lastTopOuter, lastBottomOuter
-  );
-  
-  // Calculate improved normals for better rendering
-  // This is a simplified approach; ideally we would compute per-vertex normals
-  for (let i = 0; i <= actualSegments; i++) {
-    const t = i / actualSegments;
-    const angle = startAngle + t * (endAngle - startAngle);
+  // Bottom face triangles - note the reverse winding order for correct orientation
+  for (let i = 0; i < actualSegments; i++) {
+    const innerIndex = bottomFaceStartIndex + i * 2;
+    const outerIndex = innerIndex + 1;
+    const nextInnerIndex = innerIndex + 2;
+    const nextOuterIndex = outerIndex + 2;
     
-    // Inner wall normals - pointing inward
+    // Create two triangles for each quad on the bottom face
+    indices.push(innerIndex, nextInnerIndex, outerIndex);
+    indices.push(nextInnerIndex, nextOuterIndex, outerIndex);
+  }
+  
+  // Generate the inner wall
+  for (let i = 0; i < actualSegments; i++) {
+    const topInnerIndex = topFaceStartIndex + i * 2;
+    const bottomInnerIndex = bottomFaceStartIndex + i * 2;
+    const nextTopInnerIndex = topInnerIndex + 2;
+    const nextBottomInnerIndex = bottomInnerIndex + 2;
+    
+    // Calculate the normal - pointing inward
+    const angle = startAngle + (i / actualSegments) * (endAngle - startAngle);
     const nx = -Math.cos(angle);
     const nz = -Math.sin(angle);
     
-    // For top and bottom faces, we've already set the normals correctly
-    
-    // For side walls, update the normals (this is approximate)
-    // This would ideally be more precise, but this simple approach works for our needs
-    if (i > 0 && i < actualSegments) {
-      // Update normals for side faces if needed
-    }
+    // Create two triangles for each quad on the inner wall
+    indices.push(topInnerIndex, bottomInnerIndex, nextTopInnerIndex);
+    indices.push(nextTopInnerIndex, bottomInnerIndex, nextBottomInnerIndex);
   }
+  
+  // Generate the outer wall
+  for (let i = 0; i < actualSegments; i++) {
+    const topOuterIndex = topFaceStartIndex + i * 2 + 1;
+    const bottomOuterIndex = bottomFaceStartIndex + i * 2 + 1;
+    const nextTopOuterIndex = topOuterIndex + 2;
+    const nextBottomOuterIndex = bottomOuterIndex + 2;
+    
+    // Calculate the normal - pointing outward
+    const angle = startAngle + (i / actualSegments) * (endAngle - startAngle);
+    const nx = Math.cos(angle);
+    const nz = Math.sin(angle);
+    
+    // Create two triangles for each quad on the outer wall
+    indices.push(topOuterIndex, nextTopOuterIndex, bottomOuterIndex);
+    indices.push(bottomOuterIndex, nextTopOuterIndex, nextBottomOuterIndex);
+  }
+  
+  // Create end caps to make the bracelet watertight
+  // First end cap (at the start of the C-shape)
+  const startTopInner = topFaceStartIndex;
+  const startTopOuter = startTopInner + 1;
+  const startBottomInner = bottomFaceStartIndex;
+  const startBottomOuter = startBottomInner + 1;
+  
+  // Calculate the normal for the start cap - facing the start angle
+  const startNx = Math.cos(startAngle - Math.PI/2);
+  const startNz = Math.sin(startAngle - Math.PI/2);
+  
+  // Add triangles for the start end cap
+  indices.push(startTopInner, startBottomInner, startTopOuter);
+  indices.push(startTopOuter, startBottomInner, startBottomOuter);
+  
+  // Second end cap (at the end of the C-shape)
+  const endTopInner = topFaceStartIndex + actualSegments * 2;
+  const endTopOuter = endTopInner + 1;
+  const endBottomInner = bottomFaceStartIndex + actualSegments * 2;
+  const endBottomOuter = endBottomInner + 1;
+  
+  // Calculate the normal for the end cap - facing the end angle
+  const endNx = Math.cos(endAngle + Math.PI/2);
+  const endNz = Math.sin(endAngle + Math.PI/2);
+  
+  // Add triangles for the end cap
+  indices.push(endTopInner, endTopOuter, endBottomInner);
+  indices.push(endBottomInner, endTopOuter, endBottomOuter);
   
   return { vertices, indices, normals };
 }
@@ -2594,150 +2732,219 @@ function generateCharmAttachmentGeometry(params: CharmAttachmentParams) {
 
 function generateRingGeometry(params: RingParams) {
   const {
-    innerDiameter,
-    thickness,
-    width,
+    innerDiameter: innerDiameterInches,
+    thickness: thicknessInches,
+    width: widthInches,
     patternType,
-    patternScale,
+    patternScale: patternScaleValue,
     gapSize
   } = params;
 
-  // Convert inches to centimeters
-  const innerRadiusCm = inchesToCm(innerDiameter) / 2;
-  const outerRadiusCm = innerRadiusCm + inchesToCm(thickness);
-  const ringWidthCm = inchesToCm(width);
+  // Convert to cm
+  const innerDiameter = inchesToCm(innerDiameterInches);
+  const thickness = inchesToCm(thicknessInches);
+  const width = inchesToCm(widthInches);
   
-  // Calculate the number of segments for the circle - more segments for smoother curves
-  const actualSegments = Math.floor((360 - gapSize) / 5); // One segment every 5 degrees
+  // Calculate outer diameter
+  const outerDiameter = innerDiameter + 2 * thickness;
   
-  // Create the ring geometry
-  const geometry = new THREE.BufferGeometry();
-  const positions: number[] = [];
-  const normals: number[] = [];
+  // Number of segments for the circle (excluding the gap)
+  const fullCircleSegments = 64;
+  
+  // Calculate the actual number of segments based on the gap size
+  const gapAngle = (gapSize * Math.PI) / 180; // Convert gap size from degrees to radians
+  const segmentAngle = (2 * Math.PI) / fullCircleSegments;
+  const actualSegments = Math.floor(fullCircleSegments * (1 - gapSize / 360));
+  
+  // Arrays for vertices, indices, and normals
+  const vertices: number[] = [];
   const indices: number[] = [];
+  const normals: number[] = [];
   
-  // Calculate start and end angles for the C-shape (in radians)
-  const startAngle = (gapSize / 2) * (Math.PI / 180);
-  const endAngle = (360 - gapSize / 2) * (Math.PI / 180);
+  // The starting angle of the C-shape (half of the gap on each side)
+  const startAngle = gapAngle / 2;
+  const endAngle = 2 * Math.PI - gapAngle / 2;
   
-  // Helper function to create a point on the circle at a specific angle
+  // Function to create a point on a circle at given angle
   const createCirclePoint = (diameter: number, angle: number, y: number) => {
     const radius = diameter / 2;
-    return [
-      radius * Math.cos(angle),
-      y,
-      radius * Math.sin(angle)
-    ];
+    const x = radius * Math.cos(angle);
+    const z = radius * Math.sin(angle);
+    return [x, y, z];
   };
   
-  // Create the vertices for the C-shaped ring
+  // Generate the top face
   for (let i = 0; i <= actualSegments; i++) {
-    // Calculate the angle for this segment
-    const angle = startAngle + (i / actualSegments) * (endAngle - startAngle);
+    // Calculate the current angle, interpolating from start to end
+    const t = i / actualSegments;
+    const angle = startAngle + t * (endAngle - startAngle);
     
-    // Inner bottom, inner top, outer top, outer bottom
-    const innerBottom = createCirclePoint(inchesToCm(innerDiameter), angle, -ringWidthCm/2);
-    const innerTop = createCirclePoint(inchesToCm(innerDiameter), angle, ringWidthCm/2);
-    const outerTop = createCirclePoint(inchesToCm(innerDiameter + thickness * 2), angle, ringWidthCm/2);
-    const outerBottom = createCirclePoint(inchesToCm(innerDiameter + thickness * 2), angle, -ringWidthCm/2);
-    
-    // Add points to positions array
-    positions.push(...innerBottom, ...innerTop, ...outerTop, ...outerBottom);
-    
-    // Calculate normals (pointing outward from center of ring)
-    normals.push(
-      Math.cos(angle), 0, Math.sin(angle),  // inner bottom
-      Math.cos(angle), 0, Math.sin(angle),  // inner top
-      Math.cos(angle), 0, Math.sin(angle),  // outer top
-      Math.cos(angle), 0, Math.sin(angle)   // outer bottom
-    );
-    
-    // If this isn't the last segment, create triangles
-    if (i < actualSegments) {
-      const baseIndex = i * 4;
-      
-      // Side faces
-      // First triangle: bottom-left, top-left, top-right
-      indices.push(baseIndex, baseIndex + 1, baseIndex + 5);
-      // Second triangle: bottom-left, top-right, bottom-right
-      indices.push(baseIndex, baseIndex + 5, baseIndex + 4);
-      
-      // Front face (outer surface)
-      // First triangle
-      indices.push(baseIndex + 2, baseIndex + 3, baseIndex + 7);
-      // Second triangle
-      indices.push(baseIndex + 2, baseIndex + 7, baseIndex + 6);
-      
-      // Top face
-      // First triangle
-      indices.push(baseIndex + 1, baseIndex + 2, baseIndex + 6);
-      // Second triangle
-      indices.push(baseIndex + 1, baseIndex + 6, baseIndex + 5);
-      
-      // Bottom face
-      // First triangle
-      indices.push(baseIndex, baseIndex + 7, baseIndex + 3);
-      // Second triangle
-      indices.push(baseIndex, baseIndex + 4, baseIndex + 7);
-    }
-  }
-  
-  // If there's a gap, add cap faces at the ends
-  if (gapSize > 0) {
-    const startBaseIndex = 0;
-    const endBaseIndex = actualSegments * 4;
-    
-    // Start cap
-    indices.push(
-      startBaseIndex, startBaseIndex + 3, startBaseIndex + 2,
-      startBaseIndex, startBaseIndex + 2, startBaseIndex + 1
-    );
-    
-    // End cap
-    indices.push(
-      endBaseIndex, endBaseIndex + 1, endBaseIndex + 2,
-      endBaseIndex, endBaseIndex + 2, endBaseIndex + 3
-    );
-  }
-  
-  // Apply pattern based on type
-  if (patternType !== 'plain') {
-    for (let i = 0; i < positions.length; i += 3) {
-      const x = positions[i];
-      const y = positions[i + 1];
-      const z = positions[i + 2];
-      
-      // Calculate angle and distance from center
-      const angle = Math.atan2(z, x);
-      const distance = Math.sqrt(x*x + z*z);
-      
-      // Apply different patterns based on type
-      let pattern = 0;
+    // Apply pattern to the diameter if needed
+    let patternOffset = 0;
+    if (patternType !== 'plain') {
+      // The pattern variation based on the ring's pattern type
+      const patternScale = patternScaleValue * 5; // Scale the pattern
       
       switch (patternType) {
         case 'waves':
-          pattern = Math.sin(angle * 8 * patternScale) * 0.05;
+          patternOffset = thickness * 0.2 * Math.sin(angle * patternScale);
           break;
         case 'geometric':
-          pattern = (Math.sin(angle * 16 * patternScale) > 0 ? 0.05 : 0);
+          patternOffset = thickness * 0.15 * Math.abs(Math.sin(angle * patternScale));
           break;
         case 'organic':
-          pattern = (Math.sin(angle * 4 * patternScale) * Math.cos(angle * 6 * patternScale)) * 0.05;
+          // A more random looking pattern
+          patternOffset = thickness * 0.2 * (
+            Math.sin(angle * patternScale) * 0.6 + 
+            Math.sin(angle * patternScale * 2.7) * 0.3 + 
+            Math.sin(angle * patternScale * 5.1) * 0.1
+          );
           break;
       }
-      
-      // Apply the pattern by adjusting the vertex position slightly
-      const direction = [x / distance, 0, z / distance];
-      positions[i] += direction[0] * pattern * distance;
-      positions[i + 2] += direction[2] * pattern * distance;
     }
+    
+    // Inner circle points (top face)
+    const [innerX, innerY, innerZ] = createCirclePoint(innerDiameter - patternOffset * 2, angle, width / 2);
+    vertices.push(innerX, innerY, innerZ);
+    normals.push(0, 1, 0); // Top face normal
+    
+    // Outer circle points (top face)
+    const [outerX, outerY, outerZ] = createCirclePoint(outerDiameter + patternOffset * 2, angle, width / 2);
+    vertices.push(outerX, outerY, outerZ);
+    normals.push(0, 1, 0); // Top face normal
   }
   
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setIndex(indices);
+  // Generate the bottom face
+  for (let i = 0; i <= actualSegments; i++) {
+    // Calculate the current angle, interpolating from start to end
+    const t = i / actualSegments;
+    const angle = startAngle + t * (endAngle - startAngle);
+    
+    // Apply the same pattern for consistency
+    let patternOffset = 0;
+  if (patternType !== 'plain') {
+      const patternScale = patternScaleValue * 5;
+      
+      switch (patternType) {
+        case 'waves':
+          patternOffset = thickness * 0.2 * Math.sin(angle * patternScale);
+          break;
+        case 'geometric':
+          patternOffset = thickness * 0.15 * Math.abs(Math.sin(angle * patternScale));
+          break;
+        case 'organic':
+          patternOffset = thickness * 0.2 * (
+            Math.sin(angle * patternScale) * 0.6 + 
+            Math.sin(angle * patternScale * 2.7) * 0.3 + 
+            Math.sin(angle * patternScale * 5.1) * 0.1
+          );
+          break;
+      }
+    }
+    
+    // Inner circle points (bottom face)
+    const [innerX, innerY, innerZ] = createCirclePoint(innerDiameter - patternOffset * 2, angle, -width / 2);
+    vertices.push(innerX, innerY, innerZ);
+    normals.push(0, -1, 0); // Bottom face normal
+    
+    // Outer circle points (bottom face)
+    const [outerX, outerY, outerZ] = createCirclePoint(outerDiameter + patternOffset * 2, angle, -width / 2);
+    vertices.push(outerX, outerY, outerZ);
+    normals.push(0, -1, 0); // Bottom face normal
+  }
   
-  return geometry;
+  // Generate triangles for the top and bottom faces
+  const topFaceStartIndex = 0;
+  const bottomFaceStartIndex = (actualSegments + 1) * 2;
+  
+  // Top face triangles
+  for (let i = 0; i < actualSegments; i++) {
+    const innerIndex = topFaceStartIndex + i * 2;
+    const outerIndex = innerIndex + 1;
+    const nextInnerIndex = innerIndex + 2;
+    const nextOuterIndex = outerIndex + 2;
+    
+    // Create two triangles for each quad on the top face
+    indices.push(innerIndex, outerIndex, nextInnerIndex);
+    indices.push(nextInnerIndex, outerIndex, nextOuterIndex);
+  }
+  
+  // Bottom face triangles - note the reverse winding order for correct orientation
+  for (let i = 0; i < actualSegments; i++) {
+    const innerIndex = bottomFaceStartIndex + i * 2;
+    const outerIndex = innerIndex + 1;
+    const nextInnerIndex = innerIndex + 2;
+    const nextOuterIndex = outerIndex + 2;
+    
+    // Create two triangles for each quad on the bottom face
+    indices.push(innerIndex, nextInnerIndex, outerIndex);
+    indices.push(nextInnerIndex, nextOuterIndex, outerIndex);
+  }
+  
+  // Generate the inner wall
+  for (let i = 0; i < actualSegments; i++) {
+    const topInnerIndex = topFaceStartIndex + i * 2;
+    const bottomInnerIndex = bottomFaceStartIndex + i * 2;
+    const nextTopInnerIndex = topInnerIndex + 2;
+    const nextBottomInnerIndex = bottomInnerIndex + 2;
+    
+    // Calculate the normal - pointing inward
+    const angle = startAngle + (i / actualSegments) * (endAngle - startAngle);
+    const nx = -Math.cos(angle);
+    const nz = -Math.sin(angle);
+    
+    // Create two triangles for each quad on the inner wall
+    indices.push(topInnerIndex, bottomInnerIndex, nextTopInnerIndex);
+    indices.push(nextTopInnerIndex, bottomInnerIndex, nextBottomInnerIndex);
+  }
+  
+  // Generate the outer wall
+  for (let i = 0; i < actualSegments; i++) {
+    const topOuterIndex = topFaceStartIndex + i * 2 + 1;
+    const bottomOuterIndex = bottomFaceStartIndex + i * 2 + 1;
+    const nextTopOuterIndex = topOuterIndex + 2;
+    const nextBottomOuterIndex = bottomOuterIndex + 2;
+    
+    // Calculate the normal - pointing outward
+    const angle = startAngle + (i / actualSegments) * (endAngle - startAngle);
+    const nx = Math.cos(angle);
+    const nz = Math.sin(angle);
+    
+    // Create two triangles for each quad on the outer wall
+    indices.push(topOuterIndex, nextTopOuterIndex, bottomOuterIndex);
+    indices.push(bottomOuterIndex, nextTopOuterIndex, nextBottomOuterIndex);
+  }
+  
+  // Create end caps to make the ring watertight
+  // First end cap (at the start of the C-shape)
+  const startTopInner = topFaceStartIndex;
+  const startTopOuter = startTopInner + 1;
+  const startBottomInner = bottomFaceStartIndex;
+  const startBottomOuter = startBottomInner + 1;
+  
+  // Calculate the normal for the start cap - facing the start angle
+  const startNx = Math.cos(startAngle - Math.PI/2);
+  const startNz = Math.sin(startAngle - Math.PI/2);
+  
+  // Add triangles for the start end cap
+  indices.push(startTopInner, startBottomInner, startTopOuter);
+  indices.push(startTopOuter, startBottomInner, startBottomOuter);
+  
+  // Second end cap (at the end of the C-shape)
+  const endTopInner = topFaceStartIndex + actualSegments * 2;
+  const endTopOuter = endTopInner + 1;
+  const endBottomInner = bottomFaceStartIndex + actualSegments * 2;
+  const endBottomOuter = endBottomInner + 1;
+  
+  // Calculate the normal for the end cap - facing the end angle
+  const endNx = Math.cos(endAngle + Math.PI/2);
+  const endNz = Math.sin(endAngle + Math.PI/2);
+  
+  // Add triangles for the end cap
+  indices.push(endTopInner, endTopOuter, endBottomInner);
+  indices.push(endBottomInner, endTopOuter, endBottomOuter);
+  
+  return { vertices, indices, normals };
 }
 
 function generateMonitorStandGeometry(params: MonitorStandParams) {
@@ -2810,7 +3017,6 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
     pegDiameter,
     pegArrangement,
     pegCount,
-    pegBranchStyle
   } = params;
 
   // Convert inches to centimeters
@@ -2954,236 +3160,79 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
     const branchDiameter = pegDiameterCm * 0.6;  // Branch diameter smaller than peg
     const branchLength = pegDiameterCm * 3.5;    // Branch length relative to peg size
     
-    switch (pegBranchStyle) {
-      case 'simple':
-        // Simple design: two angled branches like a coat hanger
-        const angles = [35, 145]; // Changed angles for better spacing
-        
-        for (const angle of angles) {
-          // Convert angle to radians
-          const angleRad = (angle * Math.PI) / 180;
-          
-          // Create angled branch
-          const branch = new THREE.CylinderGeometry(
-            branchDiameter * 0.3, // Thinner at tip
-            branchDiameter * 0.6, // Thicker at base
-            branchLength * 0.9,   // Slightly longer
-            10
-          );
-          
-          // Create a mesh to transform and position
-          const branchMesh = new THREE.Mesh(branch);
-          
-          // Position branch at top of peg
-          branchMesh.position.set(0, pegHeightCm * 0.95, 0);
-          
-          // Rotate branch to proper angle (from vertical)
-          branchMesh.rotation.z = Math.PI/2 - angleRad;
-          
-          // Apply the transformation
-          const branchGeometry = branch.clone();
-          branchGeometry.applyMatrix4(branchMesh.matrix);
-          
-          // Translate to peg position
-          branchGeometry.translate(x, y, z);
-          
-          branchGeometries.push(branchGeometry);
-          
-          // Add a small ball at the end to prevent jewelry from falling off
-          const ball = new THREE.SphereGeometry(branchDiameter * 0.7, 12, 12);
-          const ballMesh = new THREE.Mesh(ball);
-          
-          // Calculate position for the ball at end of branch
-          const ballDistance = branchLength * 0.45;
-          const ballX = Math.sin(angleRad) * ballDistance;
-          const ballY = Math.cos(angleRad) * ballDistance;
-          
-          // Position ball at end of branch
-          ballMesh.position.set(
-            ballX, 
-            pegHeightCm * 0.95 + ballY, 
-            0
-          );
-          
-          // Apply transformation and position
-          const ballGeometry = ball.clone();
-          ballGeometry.applyMatrix4(ballMesh.matrix);
-          ballGeometry.translate(x, y, z);
-          
-          branchGeometries.push(ballGeometry);
-        }
-        break;
-        
-      case 'tree':
-        // Tree design: multiple branches radiating from central trunk in 3D
-        const branchCount = 5; // Increased to 5 branches for more visual distinctiveness
-        const maxBranchAngle = 40; // Increased angle for better spread
-        
-        // Create the main vertical trunk
-        const trunk = new THREE.CylinderGeometry(
-          branchDiameter * 0.6,   // Thinner at top
-          branchDiameter * 0.9,   // Thicker at base
-          pegHeightCm * 0.5,      // Taller trunk
-          10
-        );
-        
-        // Position the trunk at the top of the peg
-        const trunkMesh = new THREE.Mesh(trunk);
-        trunkMesh.position.set(0, pegHeightCm * 0.95, 0); // Position at top of peg
-        
-        const trunkGeometry = trunk.clone();
-        trunkGeometry.applyMatrix4(trunkMesh.matrix);
-        trunkGeometry.translate(x, y, z);
-        branchGeometries.push(trunkGeometry);
-        
-        // Create branches that connect to the trunk at specific angles (now with 3D distribution)
+    // Cross design with angled hooks - using pegCount for number of branches
+    const barLength = branchLength * 0.8; 
+    const barWidth = branchDiameter * 0.7; // Slightly thicker bars
+    
+    // Use pegCount for number of branches
+    const branchCount = pegCount;
+    const angleStep = (2 * Math.PI) / branchCount;
+    
+    // Create branches distributed in a circle
         for (let i = 0; i < branchCount; i++) {
-          // Calculate angle (distribute evenly around the circle)
-          const angle = (i / branchCount) * Math.PI * 2;
-          
-          // Create angled branch
-          const branch = new THREE.CylinderGeometry(
-            branchDiameter * 0.3,   // Thinner at tip
-            branchDiameter * 0.6,   // Thicker at base
-            branchLength * 0.6,     // Shorter than simple branches
-            8
-          );
-          
-          // Position and rotate properly
+      const angle = i * angleStep;
+      
+      // Create a branch (horizontal bar)
+      const branch = new THREE.BoxGeometry(barLength, barWidth, barWidth);
+      
+      // Position branch
           const branchMesh = new THREE.Mesh(branch);
-          // Position at the top of the trunk
-          branchMesh.position.set(0, pegHeightCm * 1.2, 0);
-          
-          // Different upward angle for each branch (between 30 and 50 degrees)
-          const upAngle = 30 + (i % 3) * 10; // Varies between 30, 40, and 50 degrees
-          
-          // Set rotations for a 3D tree-like arrangement
-          branchMesh.rotation.x = (90 - upAngle) * Math.PI/180;
-          branchMesh.rotation.y = angle;
+      branchMesh.position.set(0, pegHeightCm * 0.9, 0);
+      
+      // Rotate branch to point in the right direction
+      branchMesh.rotation.y = angle;
           
           const branchGeometry = branch.clone();
           branchGeometry.applyMatrix4(branchMesh.matrix);
           branchGeometry.translate(x, y, z);
           branchGeometries.push(branchGeometry);
           
-          // Add a small decorative ball at the end of each branch
-          const ballSize = branchDiameter * 0.8;
-          const ball = new THREE.SphereGeometry(ballSize, 12, 12);
+      // Add angled hook and ball at the end of each branch
+      const hookRadius = branchLength * 0.15;
+      const hookTubeRadius = branchDiameter * 0.3;
+      const hookArc = Math.PI; // 180 degree hook
+      const upAngle = 30; // 30 degree upward angle
+      
+      // Create a curved hook
+      const hook = new THREE.TorusGeometry(
+        hookRadius,        // radius of the entire torus
+        hookTubeRadius,    // thickness of the tube
+        8,                 // tubular segments
+        12,                // radial segments
+        hookArc            // arc (partial torus)
+      );
+      
+      const hookMesh = new THREE.Mesh(hook);
+      
+      // Position the hook at end of branch and rotate properly
+      const tipX = Math.sin(angle) * (barLength/2);
+      const tipZ = Math.cos(angle) * (barLength/2);
+      
+      hookMesh.position.set(tipX, pegHeightCm * 0.9, tipZ);
+      hookMesh.rotation.y = angle + Math.PI/2;
+      hookMesh.rotation.z = (upAngle * Math.PI) / 180; // Angled upward
+      
+      const hookGeometry = hook.clone();
+      hookGeometry.applyMatrix4(hookMesh.matrix);
+      hookGeometry.translate(x, y, z);
+      branchGeometries.push(hookGeometry);
+      
+      // Add ball at end of hook
+      const ball = new THREE.SphereGeometry(hookTubeRadius * 1.5, 10, 10);
           const ballMesh = new THREE.Mesh(ball);
           
-          // Calculate ball position at the end of the branch
-          const ballDistance = branchLength * 0.3;
-          const ballX = Math.sin(upAngle * Math.PI/180) * Math.cos(angle) * ballDistance;
-          const ballZ = Math.sin(upAngle * Math.PI/180) * Math.sin(angle) * ballDistance;
-          const ballY = Math.cos(upAngle * Math.PI/180) * ballDistance;
-          
-          // Position ball at end of branch
-          ballMesh.position.set(
-            ballX, 
-            pegHeightCm * 1.2 + ballY, 
-            ballZ
-          );
+      // Calculate ball position with angle adjustment
+      const angleRad = (upAngle * Math.PI) / 180;
+      const hookEndX = tipX + Math.sin(angle + Math.PI/2) * hookRadius * 2 * Math.cos(angleRad);
+      const hookEndY = pegHeightCm * 0.9 + hookRadius * 2 * Math.sin(angleRad);
+      const hookEndZ = tipZ + Math.cos(angle + Math.PI/2) * hookRadius * 2 * Math.cos(angleRad);
+      
+      ballMesh.position.set(hookEndX, hookEndY, hookEndZ);
           
           const ballGeometry = ball.clone();
           ballGeometry.applyMatrix4(ballMesh.matrix);
           ballGeometry.translate(x, y, z);
           branchGeometries.push(ballGeometry);
-        }
-        break;
-        
-      case 'cross':
-        // Cross design: distinctive cross with angled hooks at each end
-        // First create two crossed bars
-        const barLength = branchLength * 0.8; 
-        const barWidth = branchDiameter * 0.7; // Slightly thicker bars
-        
-        // Create the cross with perpendicular bars
-        const horizontalBar = new THREE.BoxGeometry(barLength, barWidth, barWidth);
-        const verticalBar = new THREE.BoxGeometry(barWidth, barLength * 0.7, barWidth);
-        
-        // Position horizontal bar
-        const horizontalMesh = new THREE.Mesh(horizontalBar);
-        horizontalMesh.position.set(0, pegHeightCm * 0.9, 0);
-        const horizontalGeometry = horizontalBar.clone();
-        horizontalGeometry.applyMatrix4(horizontalMesh.matrix);
-        horizontalGeometry.translate(x, y, z);
-        branchGeometries.push(horizontalGeometry);
-        
-        // Position vertical bar
-        const verticalMesh = new THREE.Mesh(verticalBar);
-        verticalMesh.position.set(0, pegHeightCm * 0.9 + barLength * 0.35, 0);
-        const verticalGeometry = verticalBar.clone();
-        verticalGeometry.applyMatrix4(verticalMesh.matrix);
-        verticalGeometry.translate(x, y, z);
-        branchGeometries.push(verticalGeometry);
-        
-        // Now add angled hooks at each end of the cross
-        const tipPositions = [
-          { x: barLength/2, y: pegHeightCm * 0.9, z: 0, angle: 0 },       // Right
-          { x: -barLength/2, y: pegHeightCm * 0.9, z: 0, angle: 180 },    // Left
-          { x: 0, y: pegHeightCm * 0.9 + barLength * 0.7, z: 0, angle: 270 },   // Top
-          { x: 0, y: pegHeightCm * 0.9 - barWidth, z: 0, angle: 90 }      // Bottom
-        ];
-        
-        // Add curved hooks at each tip
-        for (const tip of tipPositions) {
-          // Create curved hook (using toroidal segment for a hook shape)
-          const hookRadius = branchLength * 0.15;
-          const hookTubeRadius = branchDiameter * 0.3;
-          const hookArc = Math.PI; // 180 degree hook
-          
-          // Create a curved hook
-          const hook = new THREE.TorusGeometry(
-            hookRadius,        // radius of the entire torus
-            hookTubeRadius,    // thickness of the tube
-            8,                 // tubular segments
-            12,                // radial segments
-            hookArc            // arc (partial torus)
-          );
-          
-          const hookMesh = new THREE.Mesh(hook);
-          
-          // Position and rotate the hook based on which tip we're at
-          if (tip.angle === 0) { // Right
-            hookMesh.position.set(tip.x + hookRadius, tip.y, tip.z);
-            hookMesh.rotation.y = Math.PI/2;
-          } else if (tip.angle === 180) { // Left
-            hookMesh.position.set(tip.x - hookRadius, tip.y, tip.z);
-            hookMesh.rotation.y = -Math.PI/2;
-          } else if (tip.angle === 90) { // Bottom
-            hookMesh.position.set(tip.x, tip.y - hookRadius, tip.z);
-            hookMesh.rotation.x = Math.PI/2;
-          } else if (tip.angle === 270) { // Top
-            hookMesh.position.set(tip.x, tip.y + hookRadius, tip.z);
-            hookMesh.rotation.x = -Math.PI/2;
-          }
-          
-          const hookGeometry = hook.clone();
-          hookGeometry.applyMatrix4(hookMesh.matrix);
-          hookGeometry.translate(x, y, z);
-          branchGeometries.push(hookGeometry);
-          
-          // Add ball at end of hook
-          const ball = new THREE.SphereGeometry(hookTubeRadius * 1.5, 10, 10);
-          const ballMesh = new THREE.Mesh(ball);
-          
-          // Position ball at end of hook
-          if (tip.angle === 0) { // Right
-            ballMesh.position.set(tip.x + hookRadius * 2, tip.y, tip.z);
-          } else if (tip.angle === 180) { // Left
-            ballMesh.position.set(tip.x - hookRadius * 2, tip.y, tip.z);
-          } else if (tip.angle === 90) { // Bottom
-            ballMesh.position.set(tip.x, tip.y - hookRadius * 2, tip.z);
-          } else if (tip.angle === 270) { // Top
-            ballMesh.position.set(tip.x, tip.y + hookRadius * 2, tip.z);
-          }
-          
-          const ballGeometry = ball.clone();
-          ballGeometry.applyMatrix4(ballMesh.matrix);
-          ballGeometry.translate(x, y, z);
-          branchGeometries.push(ballGeometry);
-        }
-        break;
     }
     
     return branchGeometries;
@@ -3253,6 +3302,370 @@ function generateJewelryHolderGeometry(params: JewelryHolderParams) {
   return mergedGeometry;
 }
 
+function generateNapkinHolderGeometry(params: NapkinHolderParams) {
+  const {
+    baseWidth: baseWidthInches,
+    baseDepth: baseDepthInches,
+    baseHeight: baseHeightInches,
+    wallThickness: wallThicknessInches,
+    wallHeight: wallHeightInches,
+    wallStyle,
+    openingWidth: openingWidthInches
+  } = params;
+  
+  // Convert inches to cm
+  const baseWidth = inchesToCm(baseWidthInches);
+  const baseDepth = inchesToCm(baseDepthInches);
+  const baseHeight = inchesToCm(baseHeightInches);
+  const wallThickness = inchesToCm(wallThicknessInches);
+  const wallHeight = inchesToCm(wallHeightInches);
+  const openingWidth = inchesToCm(openingWidthInches);
+  
+  // Calculate dimensions for a proper napkin holder
+  const baseThickness = 1.0; // cm - thickness of the base
+  
+  // Increase base depth to better support napkins (at least 5 inches / 12.7 cm)
+  const adjustedBaseDepth = Math.max(baseDepth, inchesToCm(5));
+  
+  // Adjust opening width to maintain proper side wall thickness
+  const adjustedOpeningWidth = Math.min(openingWidth, baseWidth - inchesToCm(1.5));
+  
+  // Increase wall thickness slightly for better structural integrity
+  const adjustedWallThickness = Math.max(wallThickness, inchesToCm(0.25));
+  
+  const vertices: number[] = [];
+  const indices: number[] = [];
+  const normals: number[] = [];
+  
+  // --- BASE ---
+  // Define the base - a solid rectangular prism
+  // Base vertices - bottom face
+  vertices.push(
+    -baseWidth/2, 0, -adjustedBaseDepth/2,  // 0: bottom left back
+    baseWidth/2, 0, -adjustedBaseDepth/2,   // 1: bottom right back
+    baseWidth/2, 0, adjustedBaseDepth/2,    // 2: bottom right front
+    -baseWidth/2, 0, adjustedBaseDepth/2    // 3: bottom left front
+  );
+  
+  // Base normals - all pointing down
+  for (let i = 0; i < 4; i++) {
+    normals.push(0, -1, 0);
+  }
+  
+  // Base top face vertices
+  vertices.push(
+    -baseWidth/2, baseThickness, -adjustedBaseDepth/2,  // 4: top left back
+    baseWidth/2, baseThickness, -adjustedBaseDepth/2,   // 5: top right back
+    baseWidth/2, baseThickness, adjustedBaseDepth/2,    // 6: top right front
+    -baseWidth/2, baseThickness, adjustedBaseDepth/2    // 7: top left front
+  );
+  
+  // Base top normals - all pointing up
+  for (let i = 0; i < 4; i++) {
+    normals.push(0, 1, 0);
+  }
+  
+  // Base indices - connect bottom and top faces, creating a closed mesh
+  indices.push(
+    // Bottom face
+    0, 1, 2,
+    0, 2, 3,
+    
+    // Top face
+    4, 6, 5,
+    4, 7, 6,
+    
+    // Side faces - ensure all sides are closed
+    0, 4, 1, // back-left to back-right (bottom to top)
+    1, 4, 5,
+    
+    1, 5, 2, // back-right to front-right
+    2, 5, 6,
+    
+    2, 6, 3, // front-right to front-left
+    3, 6, 7,
+    
+    3, 7, 0, // front-left to back-left
+    0, 7, 4
+  );
+  
+  // --- FRONT PANEL ---
+  // The front panel will be a separate watertight mesh that connects to the base
+  const frontPanelStartIndex = vertices.length / 3;
+  const panelFullHeight = baseThickness + wallHeight;
+  
+  // Define the front panel thickness
+  const panelThickness = adjustedWallThickness;
+  
+  // Front face - starting from the bottom of the base (for visual continuity)
+  vertices.push(
+    -baseWidth/2, 0, adjustedBaseDepth/2,           // 8: Bottom left
+    baseWidth/2, 0, adjustedBaseDepth/2,            // 9: Bottom right
+    -baseWidth/2, panelFullHeight, adjustedBaseDepth/2,         // 10: Top left
+    baseWidth/2, panelFullHeight, adjustedBaseDepth/2           // 11: Top right
+  );
+  
+  // Front face normals - pointing in +Z direction
+  for (let i = 0; i < 4; i++) {
+    normals.push(0, 0, 1);
+  }
+  
+  // Back face of front panel
+  vertices.push(
+    -baseWidth/2, 0, adjustedBaseDepth/2 - panelThickness,    // 12: Bottom left
+    baseWidth/2, 0, adjustedBaseDepth/2 - panelThickness,     // 13: Bottom right
+    -baseWidth/2, panelFullHeight, adjustedBaseDepth/2 - panelThickness,  // 14: Top left
+    baseWidth/2, panelFullHeight, adjustedBaseDepth/2 - panelThickness    // 15: Top right
+  );
+  
+  // Back face normals - pointing in -Z direction
+  for (let i = 0; i < 4; i++) {
+    normals.push(0, 0, -1);
+  }
+  
+  // Connect the front panel faces to create a watertight mesh
+  indices.push(
+    // Front face
+    frontPanelStartIndex, frontPanelStartIndex + 1, frontPanelStartIndex + 2,
+    frontPanelStartIndex + 1, frontPanelStartIndex + 3, frontPanelStartIndex + 2,
+    
+    // Back face
+    frontPanelStartIndex + 4, frontPanelStartIndex + 6, frontPanelStartIndex + 5,
+    frontPanelStartIndex + 5, frontPanelStartIndex + 6, frontPanelStartIndex + 7,
+    
+    // Left edge
+    frontPanelStartIndex, frontPanelStartIndex + 2, frontPanelStartIndex + 4,
+    frontPanelStartIndex + 4, frontPanelStartIndex + 2, frontPanelStartIndex + 6,
+    
+    // Right edge
+    frontPanelStartIndex + 1, frontPanelStartIndex + 5, frontPanelStartIndex + 3,
+    frontPanelStartIndex + 5, frontPanelStartIndex + 7, frontPanelStartIndex + 3,
+    
+    // Top edge
+    frontPanelStartIndex + 2, frontPanelStartIndex + 3, frontPanelStartIndex + 6,
+    frontPanelStartIndex + 6, frontPanelStartIndex + 3, frontPanelStartIndex + 7,
+    
+    // Bottom edge - critical for watertightness
+    frontPanelStartIndex, frontPanelStartIndex + 4, frontPanelStartIndex + 1,
+    frontPanelStartIndex + 1, frontPanelStartIndex + 4, frontPanelStartIndex + 5
+  );
+  
+  // --- BACK PANEL ---
+  // Create the back panel as a separate watertight mesh
+  const backPanelStartIndex = vertices.length / 3;
+  
+  // Different styles for the back panel based on wallStyle
+  if (wallStyle === 'curved') {
+    // Create a curved back panel with increased thickness
+    const numSegments = 12;
+    const curveRadius = wallHeight * 0.8;
+    const curveStartAngle = Math.PI / 2; // Start from vertical position
+    const curveSweepAngle = Math.PI / 4; // Sweep 45 degrees
+    
+    // Double the panel thickness for the curved style
+    const curvedThickness = adjustedWallThickness * 2.0; // Increased for better stability
+    
+    // First create vertices for the base-wall connection
+    // Bottom face vertices (at y=0)
+    vertices.push(
+      // Base bottom vertices (at y=0)
+      -baseWidth/2, 0, -adjustedBaseDepth/2,                      // 0: Back left bottom (outer)
+      baseWidth/2, 0, -adjustedBaseDepth/2,                       // 1: Back right bottom (outer)
+      -baseWidth/2, 0, -adjustedBaseDepth/2 - curvedThickness,    // 2: Back left bottom (inner)
+      baseWidth/2, 0, -adjustedBaseDepth/2 - curvedThickness      // 3: Back right bottom (inner)
+    );
+    
+    // Add normals for bottom vertices - all pointing down
+    for (let i = 0; i < 4; i++) {
+      normals.push(0, -1, 0);
+    }
+    
+    // Top of base vertices (at y=baseThickness)
+    vertices.push(
+      -baseWidth/2, baseThickness, -adjustedBaseDepth/2,                      // 4: Back left top (outer)
+      baseWidth/2, baseThickness, -adjustedBaseDepth/2,                       // 5: Back right top (outer)
+      -baseWidth/2, baseThickness, -adjustedBaseDepth/2 - curvedThickness,    // 6: Back left top (inner)
+      baseWidth/2, baseThickness, -adjustedBaseDepth/2 - curvedThickness      // 7: Back right top (inner)
+    );
+    
+    // Add normals for top of base vertices - pointing up
+    for (let i = 0; i < 4; i++) {
+      normals.push(0, 1, 0);
+    }
+    
+    // Connect the base vertices to form the base part of the wall
+    indices.push(
+      // Bottom face
+      backPanelStartIndex, backPanelStartIndex + 1, backPanelStartIndex + 2,
+      backPanelStartIndex + 1, backPanelStartIndex + 3, backPanelStartIndex + 2,
+      
+      // Outer back edge (front facing)
+      backPanelStartIndex, backPanelStartIndex + 4, backPanelStartIndex + 1,
+      backPanelStartIndex + 1, backPanelStartIndex + 4, backPanelStartIndex + 5,
+      
+      // Inner back edge (back facing)
+      backPanelStartIndex + 2, backPanelStartIndex + 3, backPanelStartIndex + 6,
+      backPanelStartIndex + 3, backPanelStartIndex + 7, backPanelStartIndex + 6,
+      
+      // Left edge
+      backPanelStartIndex, backPanelStartIndex + 2, backPanelStartIndex + 4,
+      backPanelStartIndex + 2, backPanelStartIndex + 6, backPanelStartIndex + 4,
+      
+      // Right edge
+      backPanelStartIndex + 1, backPanelStartIndex + 5, backPanelStartIndex + 3,
+      backPanelStartIndex + 5, backPanelStartIndex + 7, backPanelStartIndex + 3
+    );
+    
+    // Now create curved segments starting from the top of the base
+    // We'll directly connect to the vertices we already created for the base top
+    const baseVertexCount = 8; // We added 8 vertices for the base part
+    const firstCurveLevel = [
+      backPanelStartIndex + 4, // Back left outer (connects to the base)
+      backPanelStartIndex + 5, // Back right outer
+      backPanelStartIndex + 6, // Back left inner
+      backPanelStartIndex + 7  // Back right inner
+    ];
+    
+    // Array to store the indices for all levels to make connections clearer
+    const levelIndices: number[][] = [firstCurveLevel];
+    
+    // Create the curved segments
+    for (let i = 1; i <= numSegments; i++) {
+      const angle = curveStartAngle - (curveSweepAngle * i / numSegments);
+      const yOffset = curveRadius * Math.sin(angle);
+      const zOffset = curveRadius * Math.cos(angle);
+      
+      const y = baseThickness + wallHeight - yOffset;
+      const z = -adjustedBaseDepth/2 + zOffset;
+      const zInner = z - curvedThickness;
+      
+      const levelStartIndex = vertices.length / 3;
+      
+      // Add vertices for this level
+      vertices.push(
+        -baseWidth/2, y, z,      // Left outer
+        baseWidth/2, y, z,       // Right outer
+        -baseWidth/2, y, zInner, // Left inner
+        baseWidth/2, y, zInner   // Right inner
+      );
+      
+      // Normals for outer face - pointing away from the curve center
+      const normalX = 0;
+      const normalY = Math.sin(angle);
+      const normalZ = Math.cos(angle);
+      
+      normals.push(
+        normalX, normalY, normalZ,  // Left outer
+        normalX, normalY, normalZ,  // Right outer
+        -normalX, -normalY, -normalZ, // Left inner
+        -normalX, -normalY, -normalZ  // Right inner
+      );
+      
+      levelIndices.push([
+        levelStartIndex,     // Left outer
+        levelStartIndex + 1, // Right outer
+        levelStartIndex + 2, // Left inner
+        levelStartIndex + 3  // Right inner
+      ]);
+    }
+    
+    // Connect all the curve segments
+    for (let i = 0; i < numSegments; i++) {
+      const currentLevel = levelIndices[i];
+      const nextLevel = levelIndices[i + 1];
+      
+      // Front (outer) face
+      indices.push(
+        currentLevel[0], currentLevel[1], nextLevel[0], // Left triangle
+        currentLevel[1], nextLevel[1], nextLevel[0]     // Right triangle
+      );
+      
+      // Back (inner) face
+      indices.push(
+        currentLevel[2], nextLevel[2], currentLevel[3], // Left triangle
+        currentLevel[3], nextLevel[2], nextLevel[3]     // Right triangle
+      );
+      
+      // Left side face
+      indices.push(
+        currentLevel[0], nextLevel[0], currentLevel[2], // Outer triangle
+        currentLevel[2], nextLevel[0], nextLevel[2]     // Inner triangle
+      );
+      
+      // Right side face
+      indices.push(
+        currentLevel[1], currentLevel[3], nextLevel[1], // Outer triangle
+        currentLevel[3], nextLevel[3], nextLevel[1]     // Inner triangle
+      );
+    }
+    
+    // Add a top face to close the mesh (last level)
+    const lastLevel = levelIndices[numSegments];
+    indices.push(
+      // Top face
+      lastLevel[0], lastLevel[2], lastLevel[1], // Front half
+      lastLevel[1], lastLevel[2], lastLevel[3]  // Back half
+    );
+  } else if (wallStyle === 'straight') {
+    // Create a straight back panel with proper watertightness
+    // Front face
+    vertices.push(
+      -baseWidth/2, 0, -adjustedBaseDepth/2,          // 0: Bottom left - at the base edge
+      baseWidth/2, 0, -adjustedBaseDepth/2,           // 1: Bottom right - at the base edge
+      -baseWidth/2, panelFullHeight, -adjustedBaseDepth/2,        // 2: Top left
+      baseWidth/2, panelFullHeight, -adjustedBaseDepth/2          // 3: Top right
+    );
+    
+    // Front face normals - pointing in -Z direction
+    for (let i = 0; i < 4; i++) {
+      normals.push(0, 0, -1);
+    }
+    
+    // Back face
+    vertices.push(
+      -baseWidth/2, 0, -adjustedBaseDepth/2 - panelThickness,    // 4: Bottom left
+      baseWidth/2, 0, -adjustedBaseDepth/2 - panelThickness,     // 5: Bottom right
+      -baseWidth/2, panelFullHeight, -adjustedBaseDepth/2 - panelThickness,  // 6: Top left
+      baseWidth/2, panelFullHeight, -adjustedBaseDepth/2 - panelThickness    // 7: Top right
+    );
+    
+    // Back face normals - pointing in +Z direction
+    for (let i = 0; i < 4; i++) {
+      normals.push(0, 0, 1);
+    }
+    
+    // Connect the straight panel faces
+    indices.push(
+      // Front face
+      backPanelStartIndex, backPanelStartIndex + 1, backPanelStartIndex + 2,
+      backPanelStartIndex + 1, backPanelStartIndex + 3, backPanelStartIndex + 2,
+      
+      // Back face
+      backPanelStartIndex + 4, backPanelStartIndex + 6, backPanelStartIndex + 5,
+      backPanelStartIndex + 5, backPanelStartIndex + 6, backPanelStartIndex + 7,
+      
+      // Left edge
+      backPanelStartIndex, backPanelStartIndex + 2, backPanelStartIndex + 4,
+      backPanelStartIndex + 4, backPanelStartIndex + 2, backPanelStartIndex + 6,
+      
+      // Right edge
+      backPanelStartIndex + 1, backPanelStartIndex + 5, backPanelStartIndex + 3,
+      backPanelStartIndex + 5, backPanelStartIndex + 7, backPanelStartIndex + 3,
+      
+      // Bottom face - crucial for watertightness
+      backPanelStartIndex, backPanelStartIndex + 4, backPanelStartIndex + 1,
+      backPanelStartIndex + 1, backPanelStartIndex + 4, backPanelStartIndex + 5,
+      
+      // Top edge - completes the watertight mesh
+      backPanelStartIndex + 2, backPanelStartIndex + 3, backPanelStartIndex + 6,
+      backPanelStartIndex + 6, backPanelStartIndex + 3, backPanelStartIndex + 7
+    );
+  }
+  
+  // Merge all meshes together by returning the complete set of vertices, indices, and normals
+  return { vertices, indices, normals };
+}
+
 function ParametricShape({ params, meshRef }: ParametricShapeProps) {
   const geometry = useMemo(() => {
     const params_ = cloneDeep(params)
@@ -3283,6 +3696,8 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
         return generateMonitorStandGeometry(params_ as MonitorStandParams)
       case 'jewelryHolder':
         return generateJewelryHolderGeometry(params_ as JewelryHolderParams)
+      case 'napkinHolder':
+        return generateNapkinHolderGeometry(params_ as NapkinHolderParams)
       default:
         return generateStandardGeometry(params_ as StandardShapeParams)
     }
@@ -3409,14 +3824,17 @@ function generatePattern(x: number, y: number, patternType: string, scale: numbe
 }
 
 export default function Component() {
-  const [currentCategory, setCurrentCategory] = useState<keyof typeof categories>("lampshade")
+  const [currentCategory, setCurrentCategory] = useState<keyof typeof categories>("cylinderBase")
   const [shapeParams, setShapeParams] = useState<ShapeParams>(categories[currentCategory].defaults)
   const [selectedSize, setSelectedSize] = useState<keyof CategoryPriceInfo>('small')
   const [isLoading, setIsLoading] = useState(false)
   const [key, setKey] = useState(0)
+  const [addToCartStatus, setAddToCartStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const meshRef = useRef<THREE.Mesh>(null)
   const [customOrderEmail, setCustomOrderEmail] = useState("")
   const [showCustomOrderModal, setShowCustomOrderModal] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('') // Add search query state
+  const [showAllProducts, setShowAllProducts] = useState(false) // Add state for showing all products
 
   const handleExportSTL = useCallback(async () => {
     if (!meshRef.current) {
@@ -3496,11 +3914,11 @@ export default function Component() {
           patternType: value as CoasterShapeParams['patternType']
         }
       }
-      // Handle cableOpening separately to convert string to boolean
-      if (paramId === 'cableOpening') {
+      // Handle boolean toggles
+      if (paramId === 'cableOpening' || paramId === 'hasTop' || paramId === 'hasBottom') {
         return {
           ...prev,
-          cableOpening: value === 'true'
+          [paramId]: paramId === 'cableOpening' ? value === 'true' : Boolean(Number(value))
         } as ShapeParams;
       }
       
@@ -3568,6 +3986,23 @@ export default function Component() {
     }
   }, [meshRef, currentCategory, customOrderEmail])
 
+  // Filter categories based on search query
+  const filteredCategories = useMemo(() => {
+    return Object.entries(categories).filter(([id, { name, description }]) => {
+      const query = searchQuery.toLowerCase();
+      return name.toLowerCase().includes(query) || 
+             description.toLowerCase().includes(query) ||
+             id.toLowerCase().includes(query);
+    });
+  }, [searchQuery]);
+
+  // Limit categories to 6 if not showing all
+  const displayedCategories = useMemo(() => {
+    return showAllProducts ? filteredCategories : filteredCategories.slice(0, 6);
+  }, [filteredCategories, showAllProducts]);
+
+  const hasMoreProducts = filteredCategories.length > 6;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white font-sans antialiased">
       <div className="container mx-auto min-h-screen flex flex-col gap-8 p-6">
@@ -3583,7 +4018,7 @@ export default function Component() {
               />
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold tracking-tight">3D Homegoods Design</h1>
+                  <h1 className="text-2xl font-bold tracking-tight">3D Parametric Design</h1>
                   <span className="text-zinc-400 text-sm">
                     Built by{" "}
                     <a
@@ -3596,7 +4031,11 @@ export default function Component() {
                     </a>
                   </span>
                 </div>
-                <p className="text-zinc-400 text-sm mt-1">Design, customize, and 3D print your perfect homegoods</p>
+                <p className="text-zinc-400 text-sm mt-1">Design, customize, and 3D print your perfect parametric models</p>
+                <div className="mt-2 flex items-center gap-4">
+                  <a href="/" className="text-blue-400 hover:text-blue-300 transition-colors text-sm">Home</a>
+                  <a href="/ai-cad" className="text-blue-400 hover:text-blue-300 transition-colors text-sm">AI CAD Generator</a>
+                </div>
               </div>
             </div>
           </div>
@@ -3605,24 +4044,57 @@ export default function Component() {
 
         <div>
           <h2 className="text-lg font-semibold mb-4">Products</h2>
+          
+          {/* Add search bar */}
+          <div className="mb-4">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search products..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+          
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {Object.entries(categories).map(([id, { name }]) => (
+            {displayedCategories.map(([id, { name }]) => (
               <Button
                 key={id}
                 variant={currentCategory === id ? "default" : "ghost"}
                 className="w-full justify-start h-12 px-4"
-                onClick={() => switchCategory(id)}
+                onClick={() => switchCategory(id as keyof typeof categories)}
               >
                 {name}
               </Button>
             ))}
           </div>
+          
+          {/* Show more button */}
+          {hasMoreProducts && (
+            <Button 
+              variant="secondary" 
+              className="mt-4 w-full text-black"
+              onClick={() => setShowAllProducts(!showAllProducts)}
+            >
+              {showAllProducts ? "Show Less" : `Show More (${filteredCategories.length - 6} more)`}
+            </Button>
+          )}
         </div>
 
         <div className="flex-1 grid lg:grid-cols-[1fr_320px] gap-8">
           <div className="relative rounded-2xl overflow-hidden bg-zinc-800/50 backdrop-blur-sm border border-white/10 h-[50vh] lg:h-[600px]">
             <div className="absolute inset-0">
-              <Canvas camera={{ position: [40, 20, 40], fov: 45 }} className="w-full h-full">
+              <Canvas camera={{ position: [40, 20, 40], fov: 25 }} className="w-full h-full">
                 <Suspense fallback={null}>
                   <Scene key={key} params={{ ...shapeParams, meshRef }} />
                 </Suspense>
@@ -3934,26 +4406,25 @@ export default function Component() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </>
+                )}
 
-                    <div className="flex flex-col space-y-2">
-                      <Label className="text-white">Peg Branch Style</Label>
+                {shapeParams.type === 'napkinHolder' && (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Wall Style</Label>
                       <Select
-                        value={(shapeParams as JewelryHolderParams).pegBranchStyle}
-                        onValueChange={(value) => {
-                          updateParam("pegBranchStyle", value);
-                        }}
-                      >
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
-                          <SelectValue placeholder="Select branch style" />
+                      value={(shapeParams as NapkinHolderParams).wallStyle}
+                      onValueChange={(value) => updateParam("wallStyle", value)}
+                    >
+                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                        <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-zinc-900 border-zinc-700">
-                          <SelectItem value="simple" className="text-white hover:bg-zinc-800">Simple</SelectItem>
-                          <SelectItem value="tree" className="text-white hover:bg-zinc-800">Tree</SelectItem>
-                          <SelectItem value="cross" className="text-white hover:bg-zinc-800">Cross</SelectItem>
+                        <SelectItem value="curved" className="text-white hover:bg-zinc-800">Curved</SelectItem>
+                        <SelectItem value="straight" className="text-white hover:bg-zinc-800">Straight</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  </>
                 )}
               </div>
             </div>
@@ -3962,28 +4433,6 @@ export default function Component() {
               <h3 className="text-lg font-semibold">Pricing</h3>
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">Size</Label>
-                  <Select 
-                    value={selectedSize}
-                    onValueChange={(value: keyof CategoryPriceInfo) => setSelectedSize(value)}
-                  >
-                    <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" className="bg-zinc-900 border-zinc-700">
-                      {Object.entries(categories[currentCategory].priceInfo).map(([size, info]) => (
-                        <SelectItem 
-                          key={size} 
-                          value={size} 
-                          className="text-white hover:bg-zinc-800"
-                        >
-                          {size.charAt(0).toUpperCase() + size.slice(1)} ({info.dimensions})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-zinc-400 mt-1">Note: Sizes fit within the specified bounding box dimensions</p>
-                  
                   <div className="flex justify-between items-center mt-4">
                     <span className="text-lg font-semibold">
                       ${categories[currentCategory].priceInfo[selectedSize]?.price?.toFixed(2) || '0.00'}
@@ -3993,7 +4442,7 @@ export default function Component() {
                       disabled={isLoading}
                       className="bg-blue-500 hover:bg-blue-600 text-white"
                     >
-                      {isLoading ? 'Loading...' : 'Buy Now'}
+                      {isLoading ? 'Loading...' : 'Place Order'}
                     </Button>
                   </div>
 
@@ -4005,16 +4454,6 @@ export default function Component() {
                     >
                       <Download className="w-4 h-4" />
                       Download STL
-                    </Button>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-zinc-700">
-                    <Label className="text-sm font-medium mb-2 block">Want these exact dimensions?</Label>
-                    <Button
-                      onClick={() => setShowCustomOrderModal(true)}
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                    >
-                      Request Custom Order
                     </Button>
                   </div>
                 </div>
