@@ -33,12 +33,13 @@ interface CategoryInfo {
   description: string;
   priceInfo: CategoryPriceInfo;
   defaults: ShapeParams;
+  customizable: boolean; // Add customizable property
 }
 
 const categories: Record<string, CategoryInfo> = {
-  cylinderBase: {
-    name: "Base",
-    description: "Solid bases for lamps, vases, or display stands. Simple, clean design with top and bottom closed. Choose from cylinder, star, or square shapes. For custom dimensions or special requests, use our Custom Order button.",
+  standard: {
+    name: "Vase",
+    description: "Customizable vases with elegant, flowing designs. For custom dimensions or special requests, use our Custom Order button.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -57,29 +58,51 @@ const categories: Record<string, CategoryInfo> = {
       }
     },
     defaults: {
-      type: "cylinderBase",
-      shape: "flower",
-      material: "shiny",
-      height: 8,
-      diameter: 10,
-      flowerPetals: 5,
-      petalPointiness: 0.8,
+      type: 'standard' as const,
+      height: 20,
+      topRadius: 5,
+      bottomRadius: 8,
+      waveAmplitude: 2,
+      waveFrequency: 2.5,
+      twist: 0,
+      hasBottom: true,
+      hasTop: false,
+      material: "shiny" as const,
     },
+    customizable: true, // Mark as customizable
+  },
+  cylinderBase: {
+    name: "Base",
+    description: "Solid bases for lamps, vases, or display stands. Simple, clean design with top and bottom closed. Choose from cylinder, star, or square shapes. For custom dimensions or special requests, use our Custom Order button.",
+    priceInfo: {
+      small: {
+        dimensions: "3.5 x 3.5 x 1 in",
+        price: 19.99,
+        priceId: "price_1Ot41TI0wQgEQ20bwwJFuJZt"
+      },
+      medium: {
+        dimensions: "5 x 5 x 1.5 in",
+        price: 29.99,
+        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
+      }
+    },
+    defaults: {
+      type: 'cylinderBase',
+      shape: 'cylinder',
+      material: 'shiny',
+      height: 2,
+      diameter: 10,
+      flowerPetals: 6,
+      petalPointiness: 0.3
+    },
+    customizable: true, // Mark as customizable
   },
   phoneHolder: {
     name: "Phone Holder",
     description: "A customizable phone holder for your desk.",
     priceInfo: {
-      small: {
-        dimensions: "4 x 4 x 5 in",
-        price: 18.99,
-        priceId: "price_1Ot41TI0wQgEQ20bwwJFuJZt"
-      },
-      medium: {
-        dimensions: "5 x 5 x 6 in",
-        price: 24.99,
-        priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
-      }
+      small: { dimensions: "4 x 4 x 5 in", price: 18.99, priceId: "price_1Ot41TI0wQgEQ20bwwJFuJZt" },
+      medium: { dimensions: "4.5 x 4.5 x 5.5 in", price: 21.99, priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO" },
     },
     defaults: {
       type: 'phoneHolder',
@@ -87,12 +110,13 @@ const categories: Record<string, CategoryInfo> = {
       baseWidth: 4,
       baseDepth: 4,
       height: 5,
-      angle: 60,
+      angle: 65,
       phoneThickness: 0.5,
       lipHeight: 0.75,
       cableOpening: true,
-      standThickness: 0.8, // Default thickness of 0.8 inches (thicker than before)
-    }
+      standThickness: 0.5,
+    },
+    customizable: true, // Mark as customizable
   },
   pencilHolder: {
     name: "Pencil Holder",
@@ -119,7 +143,8 @@ const categories: Record<string, CategoryInfo> = {
       dividerType: 'grid',
       dividerCount: 2,
       hasBottom: true
-    }
+    },
+    customizable: true, // Mark as customizable
   },
   napkinHolder: {
     name: 'Napkin Holder',
@@ -139,6 +164,7 @@ const categories: Record<string, CategoryInfo> = {
       wallStyle: 'curved',
       openingWidth: 5,
     },
+    customizable: true, // Mark as customizable
   },
   bracelet: {
     name: "Bracelet",
@@ -165,7 +191,8 @@ const categories: Record<string, CategoryInfo> = {
       patternType: 'plain',
       patternDepth: 0.1,
       patternScale: 0.5
-    }
+    },
+    customizable: true, // Mark as customizable
   },
   ring: {
     name: "Ring",
@@ -191,39 +218,40 @@ const categories: Record<string, CategoryInfo> = {
       patternType: 'plain',
       patternScale: 1.0,
       gapSize: 0
-    }
+    },
+    customizable: true,
   },
   coaster: {
     name: "Decorative Coaster",
     description: "Stylish protection for your surfaces with unique patterns. For custom dimensions or special requests, use our Custom Order button.",
     priceInfo: {
       mini: {
-        dimensions: "2\" × 2\" × 2\"",
-        price: 25,
+        dimensions: "2\" × 2\" × 0.25\"",
+        price: 15,
         priceId: "price_1QmGnoCLoBz9jXRliwBcAA5a"
       },
       small: {
-        dimensions: "3.5\" × 3.5\" × 3.5\"",
-        price: 35,
+        dimensions: "3.5\" × 3.5\" × 0.5\"",
+        price: 20,
         priceId: "price_1QmGpfCLoBz9jXRlBcrkWyUj"
       },
       medium: {
-        dimensions: "5\" × 5\" × 5\"",
-        price: 45,
+        dimensions: "5\" × 5\" × 0.75\"",
+        price: 25,
         priceId: "price_1QmGquCLoBz9jXRlh9SG2fqs"
       }
     },
     defaults: {
-      type: 'coaster' as const,
-      diameter: 24,
-      thickness: 6,
-      patternType: 'hexagonal' as const,
-      patternScale: 2,
-      patternDepth: 1,
-      rimHeight: 2,
-      hasBottom: true,
+      type: 'coaster',
+      diameter: 10,
+      thickness: 0.5,
+      patternType: 'hexagonal',
+      patternScale: 1,
+      patternDepth: 0.2,
+      rimHeight: 0.3,
       material: "shiny" as const,
     },
+    customizable: true, // Change from ready-made to customizable
   },
   monitorStand: {
     name: "Monitor Stand",
@@ -235,20 +263,21 @@ const categories: Record<string, CategoryInfo> = {
         priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
       },
       medium: {
-        dimensions: "16 x 9 x 4 in",
+        dimensions: "15 x 10 x 4 in",
         price: 44.99,
         priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO"
       }
     },
     defaults: {
       type: 'monitorStand',
-      material: 'matte',
-      width: 14,
+      width: 12,
       depth: 8,
-      height: 3.5,
+      height: 3,
       thickness: 0.8,
-      legStyle: 'minimal'
-    }
+      legStyle: 'minimal',
+      material: 'matte', // Add missing material property
+    },
+    customizable: true, // Change from ready-made to customizable
   },
   jewelryHolder: {
     name: "Jewelry Holder",
@@ -276,7 +305,8 @@ const categories: Record<string, CategoryInfo> = {
       pegDiameter: 0.4,
       pegArrangement: 'circular',
       pegCount: 5
-    }
+    },
+    customizable: true,
   },
   bowl: {
     name: "Bowl",
@@ -308,6 +338,7 @@ const categories: Record<string, CategoryInfo> = {
       twist: 0,
       material: "shiny" as const,
     },
+    customizable: true,
   },
   wallArt: {
     name: "Wall Art",
@@ -339,39 +370,41 @@ const categories: Record<string, CategoryInfo> = {
       patternDepth: 1,
       material: "shiny" as const,
     },
+    customizable: true,
   },
   vase: {
     name: "Vase",
     description: "Create elegant vases for flowers and decorative displays. For custom dimensions or special requests, use our Custom Order button.",
     priceInfo: {
       mini: {
-        dimensions: "2\" × 2\" × 2\"",
-        price: 25,
+        dimensions: "3\" × 3\" × 4\"",
+        price: 30,
         priceId: "price_1QmGnoCLoBz9jXRliwBcAA5a"
       },
       small: {
-        dimensions: "3.5\" × 3.5\" × 3.5\"",
-        price: 35,
+        dimensions: "4\" × 4\" × 6\"",
+        price: 40,
         priceId: "price_1QmGpfCLoBz9jXRlBcrkWyUj"
       },
       medium: {
-        dimensions: "5\" × 5\" × 5\"",
-        price: 45,
+        dimensions: "5\" × 5\" × 8\"",
+        price: 50,
         priceId: "price_1QmGquCLoBz9jXRlh9SG2fqs"
       }
     },
     defaults: {
       type: 'standard' as const,
-      height: 25,
-      topRadius: 12,
-      bottomRadius: 8,
-      waveAmplitude: 1,
-      waveFrequency: 4,
-      twist: 0,
+      height: 24,
+      topRadius: 8,
+      bottomRadius: 5,
+      waveAmplitude: 1.5,
+      waveFrequency: 3,
+      twist: 1.2,
       hasBottom: true,
-      hasTop: false,  // Top open
+      hasTop: false,
       material: "shiny" as const,
     },
+    customizable: true, // Add customizable property
   },
   candleHolder: {
     name: "Cup",
@@ -403,6 +436,7 @@ const categories: Record<string, CategoryInfo> = {
       twist: 0,
       material: "shiny" as const,
     },
+    customizable: true,
   },
   lampshade: {
     name: "Lampshade",
@@ -436,6 +470,7 @@ const categories: Record<string, CategoryInfo> = {
       hasTop: false,    // Top open
       material: "shiny" as const,
     },
+    customizable: true,
   },
   charmAttachment: {
     name: "Charm Attachment",
@@ -459,7 +494,8 @@ const categories: Record<string, CategoryInfo> = {
       stickLength: 0.3,
       stickThickness: 0.08,
       material: 'shiny'
-    }
+    },
+    customizable: true, // Change from ready-made to customizable
   },
 } as const
 
@@ -3835,6 +3871,7 @@ export default function Component() {
   const [showCustomOrderModal, setShowCustomOrderModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('') // Add search query state
   const [showAllProducts, setShowAllProducts] = useState(false) // Add state for showing all products
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'customizable' | 'ready-made' | 'ai-generated' | 'my-uploads'>('all') // Add category filter state
 
   const handleExportSTL = useCallback(async () => {
     if (!meshRef.current) {
@@ -3986,15 +4023,32 @@ export default function Component() {
     }
   }, [meshRef, currentCategory, customOrderEmail])
 
-  // Filter categories based on search query
+  // Filter categories based on search query and category filter
   const filteredCategories = useMemo(() => {
-    return Object.entries(categories).filter(([id, { name, description }]) => {
+    return Object.entries(categories).filter(([id, { name, description, customizable }]) => {
       const query = searchQuery.toLowerCase();
-      return name.toLowerCase().includes(query) || 
-             description.toLowerCase().includes(query) ||
-             id.toLowerCase().includes(query);
+      const matchesSearch = name.toLowerCase().includes(query) || 
+                           description.toLowerCase().includes(query) ||
+                           id.toLowerCase().includes(query);
+      
+      // Apply category filter
+      if (categoryFilter === 'all') {
+        return matchesSearch;
+      } else if (categoryFilter === 'customizable') {
+        return matchesSearch && customizable === true;
+      } else if (categoryFilter === 'ready-made') {
+        return matchesSearch && customizable === false;
+      } else if (categoryFilter === 'ai-generated') {
+        // For demonstration purposes, we'll assume no products are AI-generated yet
+        return false;
+      } else if (categoryFilter === 'my-uploads') {
+        // For demonstration purposes, we'll assume no products are user uploads yet
+        return false;
+      }
+      
+      return matchesSearch;
     });
-  }, [searchQuery]);
+  }, [searchQuery, categoryFilter]);
 
   // Limit categories to 6 if not showing all
   const displayedCategories = useMemo(() => {
@@ -4045,6 +4099,45 @@ export default function Component() {
         <div>
           <h2 className="text-lg font-semibold mb-4">Products</h2>
           
+          {/* Category Filter Tabs */}
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Button
+              variant={categoryFilter === 'all' ? "default" : "outline"} 
+              onClick={() => setCategoryFilter('all')}
+              className="text-sm"
+            >
+              All
+            </Button>
+            <Button 
+              variant={categoryFilter === 'customizable' ? "default" : "outline"} 
+              onClick={() => setCategoryFilter('customizable')}
+              className="text-sm"
+            >
+              Customizable
+            </Button>
+            <Button 
+              variant={categoryFilter === 'ready-made' ? "default" : "outline"}
+              onClick={() => setCategoryFilter('ready-made')}
+              className="text-sm"
+            >
+              Ready-made
+            </Button>
+            <Button 
+              variant={categoryFilter === 'ai-generated' ? "default" : "outline"}
+              onClick={() => setCategoryFilter('ai-generated')}
+              className="text-sm"
+            >
+              AI Generated
+            </Button>
+            <Button 
+              variant={categoryFilter === 'my-uploads' ? "default" : "outline"}
+              onClick={() => setCategoryFilter('my-uploads')}
+              className="text-sm"
+            >
+              My Uploads
+            </Button>
+          </div>
+          
           {/* Add search bar */}
           <div className="mb-4">
             <div className="relative">
@@ -4066,16 +4159,29 @@ export default function Component() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {displayedCategories.map(([id, { name }]) => (
-              <Button
-                key={id}
-                variant={currentCategory === id ? "default" : "ghost"}
-                className="w-full justify-start h-12 px-4"
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {displayedCategories.map(([id, { name, customizable }]) => (
+              <div 
+                key={id} 
+                className={`border rounded-lg overflow-hidden ${
+                  currentCategory === id ? 'border-blue-500' : 'border-zinc-700'
+                } hover:border-blue-400 transition-colors cursor-pointer bg-zinc-800/50`}
                 onClick={() => switchCategory(id as keyof typeof categories)}
               >
-                {name}
-              </Button>
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="font-medium">{name}</h3>
+                    {/* Add category tag */}
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      customizable 
+                        ? 'bg-emerald-900/30 text-emerald-300' 
+                        : 'bg-amber-900/30 text-amber-300'
+                    }`}>
+                      {customizable ? 'Customizable' : 'Ready-made'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
           
@@ -4105,328 +4211,187 @@ export default function Component() {
           <div className="space-y-8">
             <div className="space-y-6 bg-zinc-800/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl">
               <h3 className="text-lg font-semibold">Design</h3>
-              <div className="space-y-6">
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Rendering</Label>
-                  <Select value={shapeParams.material} onValueChange={(value) => updateParam("material", value)}>
-                    <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent position="popper" side="bottom" className="bg-zinc-900 border-zinc-700">
-                      <SelectItem value="shiny" className="text-white hover:bg-zinc-800">Shiny</SelectItem>
-                      <SelectItem value="matte" className="text-white hover:bg-zinc-800">Matte</SelectItem>
-                      <SelectItem value="wireframe" className="text-white hover:bg-zinc-800">Wireframe</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet' || shapeParams.type === 'ring') && (
+              
+              {/* Show customization options only for customizable products */}
+              {categories[currentCategory].customizable ? (
+                <div className="space-y-6">
                   <div className="space-y-3">
-                    <Label className="text-sm font-medium">Pattern Type</Label>
-                    <Select 
-                      value={(() => {
-                        switch (shapeParams.type) {
-                          case 'coaster':
-                            return (shapeParams as CoasterShapeParams).patternType;
-                          case 'wallArt':
-                            return (shapeParams as WallArtParams).patternType;
-                          case 'candleHolder':
-                            return (shapeParams as CandleHolderParams).patternType;
-                          case 'bracelet':
-                            return (shapeParams as BraceletParams).patternType;
-                          case 'ring':
-                            return (shapeParams as RingParams).patternType;
-                          default:
-                            return 'plain';
-                        }
-                      })()}
-                      onValueChange={(value) => updateParam("patternType", value)}
-                    >
+                    <Label className="text-sm font-medium">Rendering</Label>
+                    <Select value={shapeParams.material} onValueChange={(value) => updateParam("material", value)}>
                       <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        {shapeParams.type === 'coaster' && (
-                          <>
-                            <SelectItem value="hexagonal">Hexagonal</SelectItem>
-                            <SelectItem value="spiral">Spiral</SelectItem>
-                            <SelectItem value="concentric">Concentric</SelectItem>
-                            <SelectItem value="floral">Floral</SelectItem>
-                            <SelectItem value="ripple">Ripple</SelectItem>
-                            <SelectItem value="maze">Maze</SelectItem>
-                          </>
-                        )}
-                        {shapeParams.type === 'wallArt' && (
-                          <>
-                            <SelectItem value="mandala">Mandala</SelectItem>
-                            <SelectItem value="wave">Wave</SelectItem>
-                            <SelectItem value="honeycomb">Honeycomb</SelectItem>
-                            <SelectItem value="circuit">Circuit</SelectItem>
-                            <SelectItem value="organic">Organic</SelectItem>
-                          </>
-                        )}
-                        {shapeParams.type === 'candleHolder' && (
-                          <>
-                            <SelectItem value="geometric">Geometric</SelectItem>
-                            <SelectItem value="stars">Stars</SelectItem>
-                            <SelectItem value="leaves">Leaves</SelectItem>
-                            <SelectItem value="abstract">Abstract</SelectItem>
-                          </>
-                        )}
-                        {shapeParams.type === 'bracelet' && (
-                          <>
-                            <SelectItem value="plain">Plain</SelectItem>
-                            <SelectItem value="waves">Waves</SelectItem>
-                            <SelectItem value="geometric">Geometric</SelectItem>
-                            <SelectItem value="organic">Organic</SelectItem>
-                          </>
-                        )}
-                        {shapeParams.type === 'ring' && (
-                          <>
-                            <SelectItem value="plain" className="text-white hover:bg-zinc-800">Plain</SelectItem>
-                            <SelectItem value="waves" className="text-white hover:bg-zinc-800">Waves</SelectItem>
-                            <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
-                            <SelectItem value="organic" className="text-white hover:bg-zinc-800">Organic</SelectItem>
-                          </>
-                        )}
+                      <SelectContent position="popper" side="bottom" className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="shiny" className="text-white hover:bg-zinc-800">Shiny</SelectItem>
+                        <SelectItem value="matte" className="text-white hover:bg-zinc-800">Matte</SelectItem>
+                        <SelectItem value="wireframe" className="text-white hover:bg-zinc-800">Wireframe</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                )}
 
-                {shapeParams.type === 'bowl' && (
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">Pattern Type</Label>
-                    <Select 
-                      value={shapeParams.patternType}
-                      onValueChange={(value) => updateParam("patternType", value)}
-                    >
-                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric Lines</SelectItem>
-                        <SelectItem value="stars" className="text-white hover:bg-zinc-800">Diamond Grid</SelectItem>
-                        <SelectItem value="leaves" className="text-white hover:bg-zinc-800">Wave Texture</SelectItem>
-                        <SelectItem value="abstract" className="text-white hover:bg-zinc-800">Dotted</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {shapeParams.type === 'cylinderBase' && (
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">Shape</Label>
-                    <Select 
-                      value={shapeParams.shape}
-                      onValueChange={(value) => updateParam("shape", value)}
-                    >
-                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        <SelectItem value="cylinder" className="text-white hover:bg-zinc-800">Cylinder</SelectItem>
-                        <SelectItem value="flower" className="text-white hover:bg-zinc-800">Flower</SelectItem>
-                        <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {shapeParams.type === 'phoneHolder' && (
-                  <div className="space-y-1.5">
-                    <Label className="text-sm font-medium">Cable Opening</Label>
-                    <Select
-                      value={shapeParams.cableOpening ? "yes" : "no"}
-                      onValueChange={(value) => {
-                        updateParam("cableOpening", value === "yes" ? "true" : "false");
-                      }}
-                    >
-                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-zinc-900 border-zinc-700">
-                        <SelectItem value="yes" className="text-white hover:bg-zinc-800">Yes</SelectItem>
-                        <SelectItem value="no" className="text-white hover:bg-zinc-800">No</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {getControlsForType(shapeParams.type, shapeParams).map((control) => (
-                  <div key={control.id} className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">{control.label}</Label>
-                      <span className="text-xs text-zinc-400">
-                        {typeof (shapeParams as any)[control.id] === 'number' 
-                          ? ((shapeParams as any)[control.id]?.toFixed?.(
-                              shapeParams.type === 'ring' ? 2 : 
-                              control.step === 0.01 ? 2 : 
-                              control.step === 0.1 ? 1 : 0
-                            ) || (shapeParams as any)[control.id])
-                          : ''}
-                      </span>
-                    </div>
-                    <Slider
-                      value={[(shapeParams as any)[control.id]]}
-                      onValueChange={([value]) => updateParam(control.id as any, value)}
-                      min={control.min}
-                      max={control.max}
-                      step={control.step}
-                      className="[&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
-                    />
-                  </div>
-                ))}
-
-                {shapeParams.type === 'pencilHolder' && (
-                  <>
+                  {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet' || shapeParams.type === 'ring') && (
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium">Shape</Label>
+                      <Label className="text-sm font-medium">Pattern Type</Label>
                       <Select 
-                        value={(shapeParams as PencilHolderParams).shape}
-                        onValueChange={(value) => updateParam("shape", value)}
+                        value={(() => {
+                          switch (shapeParams.type) {
+                            case 'coaster':
+                              return (shapeParams as CoasterShapeParams).patternType;
+                            case 'wallArt':
+                              return (shapeParams as WallArtParams).patternType;
+                            case 'candleHolder':
+                              return (shapeParams as CandleHolderParams).patternType;
+                            case 'bracelet':
+                              return (shapeParams as BraceletParams).patternType;
+                            case 'ring':
+                              return (shapeParams as RingParams).patternType;
+                            default:
+                              return 'plain';
+                          }
+                        })()}
+                        onValueChange={(value) => updateParam("patternType", value)}
                       >
                         <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-zinc-900 border-zinc-700">
-                          <SelectItem value="circle" className="text-white hover:bg-zinc-800">Circle</SelectItem>
-                          <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
+                          {shapeParams.type === 'coaster' && (
+                            <>
+                              <SelectItem value="hexagonal">Hexagonal</SelectItem>
+                              <SelectItem value="spiral">Spiral</SelectItem>
+                              <SelectItem value="concentric">Concentric</SelectItem>
+                              <SelectItem value="floral">Floral</SelectItem>
+                              <SelectItem value="ripple">Ripple</SelectItem>
+                              <SelectItem value="maze">Maze</SelectItem>
+                            </>
+                          )}
+                          {shapeParams.type === 'wallArt' && (
+                            <>
+                              <SelectItem value="mandala">Mandala</SelectItem>
+                              <SelectItem value="wave">Wave</SelectItem>
+                              <SelectItem value="honeycomb">Honeycomb</SelectItem>
+                              <SelectItem value="circuit">Circuit</SelectItem>
+                              <SelectItem value="organic">Organic</SelectItem>
+                            </>
+                          )}
+                          {shapeParams.type === 'candleHolder' && (
+                            <>
+                              <SelectItem value="geometric">Geometric</SelectItem>
+                              <SelectItem value="stars">Stars</SelectItem>
+                              <SelectItem value="leaves">Leaves</SelectItem>
+                              <SelectItem value="abstract">Abstract</SelectItem>
+                            </>
+                          )}
+                          {shapeParams.type === 'bracelet' && (
+                            <>
+                              <SelectItem value="plain">Plain</SelectItem>
+                              <SelectItem value="waves">Waves</SelectItem>
+                              <SelectItem value="geometric">Geometric</SelectItem>
+                              <SelectItem value="organic">Organic</SelectItem>
+                            </>
+                          )}
+                          {shapeParams.type === 'ring' && (
+                            <>
+                              <SelectItem value="plain" className="text-white hover:bg-zinc-800">Plain</SelectItem>
+                              <SelectItem value="waves" className="text-white hover:bg-zinc-800">Waves</SelectItem>
+                              <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
+                              <SelectItem value="organic" className="text-white hover:bg-zinc-800">Organic</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
+                  )}
 
+                  {/* Show other customization controls based on product type */}
+                  {getControlsForType(shapeParams.type, shapeParams).map((control) => (
+                    <div key={control.id} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">{control.label}</Label>
+                        <span className="text-xs text-zinc-400">
+                          {typeof (shapeParams as any)[control.id] === 'number' 
+                            ? ((shapeParams as any)[control.id]?.toFixed?.(
+                                shapeParams.type === 'ring' ? 2 : 
+                                control.step === 0.01 ? 2 : 
+                                control.step === 0.1 ? 1 : 0
+                              ) || (shapeParams as any)[control.id])
+                            : ''}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[(shapeParams as any)[control.id]]}
+                        onValueChange={([value]) => updateParam(control.id as any, value)}
+                        min={control.min}
+                        max={control.max}
+                        step={control.step}
+                        className="[&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
+                      />
+                    </div>
+                  ))}
+
+                  {/* Product-specific controls */}
+                  {shapeParams.type === 'pencilHolder' && (
+                    <>
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Shape</Label>
+                        <Select 
+                          value={(shapeParams as PencilHolderParams).shape}
+                          onValueChange={(value) => updateParam("shape", value)}
+                        >
+                          <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-zinc-900 border-zinc-700">
+                            <SelectItem value="circle" className="text-white hover:bg-zinc-800">Circle</SelectItem>
+                            <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Divider Type</Label>
+                        <Select 
+                          value={(shapeParams as PencilHolderParams).dividerType}
+                          onValueChange={(value) => updateParam("dividerType", value)}
+                        >
+                          <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-zinc-900 border-zinc-700">
+                            <SelectItem value="none" className="text-white hover:bg-zinc-800">None</SelectItem>
+                            <SelectItem value="single" className="text-white hover:bg-zinc-800">Single</SelectItem>
+                            <SelectItem value="cross" className="text-white hover:bg-zinc-800">Cross</SelectItem>
+                            <SelectItem value="grid" className="text-white hover:bg-zinc-800">Grid</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+
+                  {shapeParams.type === 'napkinHolder' && (
                     <div className="space-y-3">
-                      <Label className="text-sm font-medium">Divider Type</Label>
-                      <Select 
-                        value={(shapeParams as PencilHolderParams).dividerType}
-                        onValueChange={(value) => updateParam("dividerType", value)}
+                      <Label className="text-sm font-medium">Wall Style</Label>
+                      <Select
+                        value={(shapeParams as NapkinHolderParams).wallStyle}
+                        onValueChange={(value) => updateParam("wallStyle", value)}
                       >
                         <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-zinc-900 border-zinc-700">
-                          <SelectItem value="none" className="text-white hover:bg-zinc-800">None</SelectItem>
-                          <SelectItem value="single" className="text-white hover:bg-zinc-800">Single</SelectItem>
-                          <SelectItem value="cross" className="text-white hover:bg-zinc-800">Cross</SelectItem>
-                          <SelectItem value="grid" className="text-white hover:bg-zinc-800">Grid</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-sm font-medium">Bottom</Label>
-                      <Select
-                        value={(shapeParams as PencilHolderParams).hasBottom ? "yes" : "no"}
-                        onValueChange={(value) => {
-                          updateParam("hasBottom", value === "yes" ? "true" : "false");
-                        }}
-                      >
-                        <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                          <SelectItem value="yes" className="text-white hover:bg-zinc-800">Yes</SelectItem>
-                          <SelectItem value="no" className="text-white hover:bg-zinc-800">No</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-
-                {shapeParams.type === 'charmAttachment' && (
-                  <>
-                    <div className="space-y-1.5">
-                      <p className="text-sm text-zinc-400">
-                        A flat charm bail with a loop and horizontal pin that can be attached to existing 3D models.
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                {shapeParams.type === 'monitorStand' && (
-                  <>
-                    <div className="flex flex-col space-y-2">
-                      <Label className="text-white">Leg Style</Label>
-                      <Select
-                        value={(shapeParams as MonitorStandParams).legStyle}
-                        onValueChange={(value) => {
-                          updateParam("legStyle", value);
-                        }}
-                      >
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
-                          <SelectValue placeholder="Select leg style" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                          <SelectItem value="minimal" className="text-white hover:bg-zinc-800">Minimal</SelectItem>
-                          <SelectItem value="solid" className="text-white hover:bg-zinc-800">Solid</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-
-                {shapeParams.type === 'jewelryHolder' && (
-                  <>
-                    <div className="flex flex-col space-y-2">
-                      <Label className="text-white">Base Style</Label>
-                      <Select
-                        value={(shapeParams as JewelryHolderParams).baseStyle}
-                        onValueChange={(value) => {
-                          updateParam("baseStyle", value);
-                        }}
-                      >
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
-                          <SelectValue placeholder="Select base style" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                          <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
-                          <SelectItem value="round" className="text-white hover:bg-zinc-800">Round</SelectItem>
                           <SelectItem value="curved" className="text-white hover:bg-zinc-800">Curved</SelectItem>
-                          <SelectItem value="tiered" className="text-white hover:bg-zinc-800">Tiered</SelectItem>
+                          <SelectItem value="straight" className="text-white hover:bg-zinc-800">Straight</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-
-                    <div className="flex flex-col space-y-2">
-                      <Label className="text-white">Peg Arrangement</Label>
-                      <Select
-                        value={(shapeParams as JewelryHolderParams).pegArrangement}
-                        onValueChange={(value) => {
-                          updateParam("pegArrangement", value);
-                        }}
-                      >
-                        <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
-                          <SelectValue placeholder="Select peg arrangement" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                          <SelectItem value="linear" className="text-white hover:bg-zinc-800">Linear</SelectItem>
-                          <SelectItem value="circular" className="text-white hover:bg-zinc-800">Circular</SelectItem>
-                          <SelectItem value="scattered" className="text-white hover:bg-zinc-800">Scattered</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-
-                {shapeParams.type === 'napkinHolder' && (
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">Wall Style</Label>
-                      <Select
-                      value={(shapeParams as NapkinHolderParams).wallStyle}
-                      onValueChange={(value) => updateParam("wallStyle", value)}
-                    >
-                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
-                        <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                        <SelectItem value="curved" className="text-white hover:bg-zinc-800">Curved</SelectItem>
-                        <SelectItem value="straight" className="text-white hover:bg-zinc-800">Straight</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                )}
-              </div>
+                  )}
+                </div>
+              ) : (
+                <div className="py-4">
+                  <p className="text-zinc-400 mb-4">This is a ready-made design that doesn't support customization.</p>
+                  <p className="text-zinc-400">You can directly download the STL file or place an order.</p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-6 bg-zinc-800/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl">
