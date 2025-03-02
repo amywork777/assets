@@ -15,6 +15,7 @@ import Image from 'next/image'
 import { cloneDeep } from 'lodash'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import Link from 'next/link'
+import { useFrame } from "@react-three/fiber"
 
 interface PriceInfo {
   dimensions: string;
@@ -37,40 +38,6 @@ interface CategoryInfo {
 }
 
 const categories: Record<string, CategoryInfo> = {
-  standard: {
-    name: "Vase",
-    description: "Customizable vases with elegant, flowing designs. For custom dimensions or special requests, use our Custom Order button.",
-    priceInfo: {
-      mini: {
-        dimensions: "2\" × 2\" × 2\"",
-        price: 25,
-        priceId: "price_1QmGnoCLoBz9jXRliwBcAA5a"
-      },
-      small: {
-        dimensions: "3.5\" × 3.5\" × 3.5\"",
-        price: 35,
-        priceId: "price_1QmGpfCLoBz9jXRlBcrkWyUj"
-      },
-      medium: {
-        dimensions: "5\" × 5\" × 5\"",
-        price: 45,
-        priceId: "price_1QmGquCLoBz9jXRlh9SG2fqs"
-      }
-    },
-    defaults: {
-      type: 'standard' as const,
-      height: 20,
-      topRadius: 5,
-      bottomRadius: 8,
-      waveAmplitude: 2,
-      waveFrequency: 2.5,
-      twist: 0,
-      hasBottom: true,
-      hasTop: false,
-      material: "shiny" as const,
-    },
-    customizable: true, // Mark as customizable
-  },
   cylinderBase: {
     name: "Base",
     description: "Solid bases for lamps, vases, or display stands. Simple, clean design with top and bottom closed. Choose from cylinder, star, or square shapes. For custom dimensions or special requests, use our Custom Order button.",
@@ -840,41 +807,95 @@ interface SceneProps {
 function Scene({ params }: SceneProps) {
   const { meshRef, ...shapeParams } = params
   
-  // Product-specific scale adjustments
-  const getProductScale = () => {
+  // Product-specific camera and scale adjustments for main view
+  const getProductSettings = () => {
+    let cameraPosition: [number, number, number] = [70, 35, 70];
+    let scale = 0.3;
+    let fov = 20;
+    
     switch (shapeParams.type) {
-      case 'standard':
-        return 0.35; // Increase scale for small objects (cups, vases)
+      case 'standard': // This is for lampshade/vase products
+        // Since we can't easily tell if this is a lampshade or vase here,
+        // use settings that work well for both
+        cameraPosition = [90, 70, 90]; // Pulled back for both
+        scale = 0.15; // Smaller scale
+        fov = 16;
+        break;
       case 'coaster':
-        return 0.4; // Increase scale for small objects
+        cameraPosition = [0, 80, 0.1]; // Pull back significantly for coaster
+        scale = 0.18;
+        fov = 15;
+        break;
       case 'wallArt':
-        return 0.25; // Increase scale for small objects
+        cameraPosition = [0, 0, 90]; // Pull back significantly for wall art
+        scale = 0.1;
+        fov = 15;
+        break;
       case 'candleHolder':
-        return 0.55; // Keep as is
+        cameraPosition = [65, 50, 65];
+        scale = 0.25;
+        fov = 18;
+        break;
       case 'bowl':
-        return 0.35; // Increase scale for small objects
-      case 'cylinderBase':
-        return 0.35; // Increase scale for small objects (lampshades)
+        cameraPosition = [60, 65, 60];
+        scale = 0.2;
+        fov = 18;
+        break;
+      case 'cylinderBase': // Base
+        cameraPosition = [45, 55, 45];
+        scale = 0.2;
+        fov = 18;
+        break;
       case 'phoneHolder':
-        return 0.55; // Keep as is
+        cameraPosition = [65, 45, 65];
+        scale = 0.25;
+        fov = 18;
+        break;
       case 'bracelet':
-        return 0.9; // Keep as is
+        cameraPosition = [50, 30, 50];
+        scale = 0.45;
+        fov = 18;
+        break;
       case 'pencilHolder':
-        return 0.6; // Keep as is
+        cameraPosition = [65, 60, 65];
+        scale = 0.25;
+        fov = 18;
+        break;
       case 'charmAttachment':
-        return 0.9; // Keep as is
+        cameraPosition = [45, 40, 45];
+        scale = 0.5;
+        fov = 18;
+        break;
       case 'ring':
-        return 1.2; // Increase scale for very small objects
+        cameraPosition = [40, 40, 40];
+        scale = 0.65;
+        fov = 16;
+        break;
       case 'monitorStand':
-        return 0.5; // Keep as is
+        cameraPosition = [70, 50, 70];
+        scale = 0.22;
+        fov = 18;
+        break;
       case 'jewelryHolder':
-        return 0.55; // Keep as is
+        cameraPosition = [65, 60, 65];
+        scale = 0.25;
+        fov = 18;
+        break;
       case 'napkinHolder':
-        return 0.55; // Keep as is
+        cameraPosition = [65, 55, 65];
+        scale = 0.25;
+        fov = 18;
+        break;
       default:
-        return 0.55; // Keep default as is
+        cameraPosition = [70, 35, 70];
+        scale = 0.3;
+        fov = 20;
     }
+    
+    return { cameraPosition, scale, fov };
   };
+  
+  const { cameraPosition, scale, fov } = getProductSettings();
   
   return (
     <>
@@ -883,7 +904,7 @@ function Scene({ params }: SceneProps) {
       <spotLight position={[10, 10, 10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
       <spotLight position={[-10, 10, -10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
       <spotLight position={[0, -10, 0]} angle={0.4} penumbra={0.8} intensity={1} castShadow />
-      <Center scale={getProductScale()} position={[0, 0, 0]}>
+      <Center scale={scale} position={[0, 0, 0]}>
         <ParametricShape params={shapeParams} meshRef={meshRef} />
       </Center>
       <Environment preset="studio" background={false} />
@@ -1836,8 +1857,8 @@ function generatePhoneHolderGeometry(params: PhoneHolderParams) {
     standStartIndex + 2, standStartIndex + 4, standStartIndex + 6,
     
     // Right edge (side face)
-    standStartIndex + 1, standStartIndex + 3, standStartIndex + 5,
-    standStartIndex + 3, standStartIndex + 7, standStartIndex + 5,
+    standStartIndex + 1, standStartIndex + 5, standStartIndex + 3,
+    standStartIndex + 3, standStartIndex + 5, standStartIndex + 7,
     
     // Bottom edge (connecting to base)
     standStartIndex, standStartIndex + 1, standStartIndex + 4,
@@ -3859,6 +3880,143 @@ function generatePattern(x: number, y: number, patternType: string, scale: numbe
   }
 }
 
+// Add a new MiniPreview component for product cards
+function MiniPreview({ categoryId, defaults }: { categoryId: string, defaults: ShapeParams }) {
+  // Create a new mesh ref for the mini preview
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Product-specific camera positions and scales for optimal preview in cards
+  const getProductSpecificSettings = () => {
+    const type = defaults.type;
+    
+    // Default camera position - pulling back significantly for all products
+    let cameraPosition: [number, number, number] = [30, 25, 30];
+    let scale = 0.22;
+    let rotate = false;
+    let fov = 20;
+    
+    switch(type) {
+      case 'standard': // This is for lampshade/vase products
+        // Check if this is a lampshade (we can tell by looking at categoryId)
+        if (categoryId === 'lampshade') {
+          cameraPosition = [30, 30, 30]; // Pulled back further for lampshade
+          scale = 0.09; // Smaller scale
+        } else {
+          // This is for the vase
+          cameraPosition = [20, 20, 20];
+          scale = 0.12;
+        }
+        rotate = true;
+        fov = 18;
+        break;
+      case 'coaster':
+        cameraPosition = [0, 30, 0.1]; // Pull back significantly for coaster
+        scale = 0.15;
+        fov = 15;
+        break;
+      case 'wallArt':
+        cameraPosition = [0, 0, 50]; // Pull back significantly for wall art
+        scale = 0.08;
+        fov = 14;
+        break;
+      case 'candleHolder':
+        cameraPosition = [20, 20, 20];
+        scale = 0.16;
+        rotate = true;
+        fov = 18;
+        break;
+      case 'bowl':
+        cameraPosition = [20, 25, 20];
+        scale = 0.15;
+        fov = 18;
+        break;
+      case 'cylinderBase': // Base
+        cameraPosition = [15, 20, 15];
+        scale = 0.18;
+        fov = 18;
+        break;
+      case 'phoneHolder':
+        cameraPosition = [20, 15, 20];
+        scale = 0.15;
+        fov = 16;
+        break;
+      case 'bracelet':
+        cameraPosition = [15, 10, 15];
+        scale = 0.3;
+        rotate = true;
+        fov = 16;
+        break;
+      case 'pencilHolder':
+        cameraPosition = [20, 20, 20];
+        scale = 0.15;
+        fov = 18;
+        break;
+      case 'charmAttachment':
+        cameraPosition = [10, 10, 10];
+        scale = 0.4;
+        rotate = true;
+        fov = 16;
+        break;
+      case 'ring':
+        cameraPosition = [8, 8, 8];
+        scale = 0.6;
+        rotate = true;
+        fov = 16;
+        break;
+      case 'monitorStand':
+        cameraPosition = [25, 18, 25];
+        scale = 0.08;
+        fov = 16;
+        break;
+      case 'jewelryHolder':
+        cameraPosition = [20, 20, 20];
+        scale = 0.12;
+        fov = 18;
+        break;
+      case 'napkinHolder':
+        cameraPosition = [22, 15, 22];
+        scale = 0.12;
+        fov = 16;
+        break;
+    }
+    
+    return { cameraPosition, scale, rotate, fov };
+  };
+  
+  const { cameraPosition, scale, rotate, fov } = getProductSpecificSettings();
+  
+  // Rotation animation for certain products
+  const RotatingGroup = ({ children, rotate }: { children: React.ReactNode, rotate: boolean }) => {
+    const groupRef = useRef<THREE.Group>(null);
+    
+    useFrame(({ clock }) => {
+      if (rotate && groupRef.current) {
+        groupRef.current.rotation.y = clock.getElapsedTime() * 0.5;
+      }
+    });
+    
+    return <group ref={groupRef}>{children}</group>;
+  };
+  
+  return (
+    <div className="aspect-square w-full overflow-hidden bg-zinc-900 rounded-t-md">
+      <Canvas camera={{ position: cameraPosition, fov: fov }} className="w-full h-full">
+        <Suspense fallback={null}>
+          <color attach="background" args={["#1a1a1a"]} />
+          <ambientLight intensity={0.8} />
+          <spotLight position={[10, 10, 10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
+          <Center scale={scale} position={[0, 0, 0]}>
+            <RotatingGroup rotate={rotate}>
+              <ParametricShape params={defaults} meshRef={meshRef} />
+            </RotatingGroup>
+          </Center>
+          <Environment preset="studio" background={false} />
+        </Suspense>
+      </Canvas>
+    </div>
+  );
+}
+
 export default function Component() {
   const [currentCategory, setCurrentCategory] = useState<keyof typeof categories>("cylinderBase")
   const [shapeParams, setShapeParams] = useState<ShapeParams>(categories[currentCategory].defaults)
@@ -3871,7 +4029,7 @@ export default function Component() {
   const [showCustomOrderModal, setShowCustomOrderModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('') // Add search query state
   const [showAllProducts, setShowAllProducts] = useState(false) // Add state for showing all products
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'customizable' | 'ready-made' | 'ai-generated' | 'my-uploads'>('all') // Add category filter state
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'customizable' | 'ready-made'>('all') // Remove ai-generated and my-uploads options
 
   const handleExportSTL = useCallback(async () => {
     if (!meshRef.current) {
@@ -4026,27 +4184,22 @@ export default function Component() {
   // Filter categories based on search query and category filter
   const filteredCategories = useMemo(() => {
     return Object.entries(categories).filter(([id, { name, description, customizable }]) => {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = name.toLowerCase().includes(query) || 
-                           description.toLowerCase().includes(query) ||
-                           id.toLowerCase().includes(query);
-      
+      // Apply search filter
+      const matchesSearch = 
+        name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        description.toLowerCase().includes(searchQuery.toLowerCase());
+        
       // Apply category filter
       if (categoryFilter === 'all') {
         return matchesSearch;
       } else if (categoryFilter === 'customizable') {
-        return matchesSearch && customizable === true;
+        return matchesSearch && customizable;
       } else if (categoryFilter === 'ready-made') {
-        return matchesSearch && customizable === false;
-      } else if (categoryFilter === 'ai-generated') {
-        // For demonstration purposes, we'll assume no products are AI-generated yet
-        return false;
-      } else if (categoryFilter === 'my-uploads') {
-        // For demonstration purposes, we'll assume no products are user uploads yet
-        return false;
-      }
+        return matchesSearch && !customizable;
+      } 
+      // Removed the ai-generated and my-uploads filters
       
-      return matchesSearch;
+      return false;
     });
   }, [searchQuery, categoryFilter]);
 
@@ -4101,40 +4254,26 @@ export default function Component() {
           
           {/* Category Filter Tabs */}
           <div className="mb-4 flex flex-wrap gap-2">
-            <Button
-              variant={categoryFilter === 'all' ? "default" : "outline"} 
+            <Button 
+              variant={categoryFilter === 'all' ? "default" : "outline"}
               onClick={() => setCategoryFilter('all')}
-              className="text-sm"
+              className="text-sm bg-zinc-800 text-white hover:bg-zinc-700 border-zinc-600"
             >
               All
             </Button>
             <Button 
-              variant={categoryFilter === 'customizable' ? "default" : "outline"} 
+              variant={categoryFilter === 'customizable' ? "default" : "outline"}
               onClick={() => setCategoryFilter('customizable')}
-              className="text-sm"
+              className="text-sm bg-zinc-800 text-white hover:bg-zinc-700 border-zinc-600"
             >
               Customizable
             </Button>
             <Button 
               variant={categoryFilter === 'ready-made' ? "default" : "outline"}
               onClick={() => setCategoryFilter('ready-made')}
-              className="text-sm"
+              className="text-sm bg-zinc-800 text-white hover:bg-zinc-700 border-zinc-600"
             >
               Ready-made
-            </Button>
-            <Button 
-              variant={categoryFilter === 'ai-generated' ? "default" : "outline"}
-              onClick={() => setCategoryFilter('ai-generated')}
-              className="text-sm"
-            >
-              AI Generated
-            </Button>
-            <Button 
-              variant={categoryFilter === 'my-uploads' ? "default" : "outline"}
-              onClick={() => setCategoryFilter('my-uploads')}
-              className="text-sm"
-            >
-              My Uploads
             </Button>
           </div>
           
@@ -4159,8 +4298,8 @@ export default function Component() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {displayedCategories.map(([id, { name, customizable }]) => (
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-3 max-w-6xl mx-auto">
+            {displayedCategories.map(([id, { name, customizable, defaults }]) => (
               <div 
                 key={id} 
                 className={`border rounded-lg overflow-hidden ${
@@ -4168,14 +4307,17 @@ export default function Component() {
                 } hover:border-blue-400 transition-colors cursor-pointer bg-zinc-800/50`}
                 onClick={() => switchCategory(id as keyof typeof categories)}
               >
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-medium">{name}</h3>
-                    {/* Add category tag */}
+                <MiniPreview 
+                  categoryId={id as string} 
+                  defaults={defaults}
+                />
+                <div className="p-3">
+                  <div className="flex justify-between items-start">
+                    <h3 className="font-medium text-white text-sm">{name}</h3>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       customizable 
-                        ? 'bg-emerald-900/30 text-emerald-300' 
-                        : 'bg-amber-900/30 text-amber-300'
+                        ? 'bg-emerald-800 text-emerald-100' 
+                        : 'bg-amber-800 text-amber-100'
                     }`}>
                       {customizable ? 'Customizable' : 'Ready-made'}
                     </span>
@@ -4200,7 +4342,7 @@ export default function Component() {
         <div className="flex-1 grid lg:grid-cols-[1fr_320px] gap-8">
           <div className="relative rounded-2xl overflow-hidden bg-zinc-800/50 backdrop-blur-sm border border-white/10 h-[50vh] lg:h-[600px]">
             <div className="absolute inset-0">
-              <Canvas camera={{ position: [40, 20, 40], fov: 25 }} className="w-full h-full">
+              <Canvas camera={{ position: [70, 35, 70], fov: 20 }} className="w-full h-full">
                 <Suspense fallback={null}>
                   <Scene key={key} params={{ ...shapeParams, meshRef }} />
                 </Suspense>
@@ -4229,7 +4371,7 @@ export default function Component() {
                     </Select>
                   </div>
 
-                  {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet' || shapeParams.type === 'ring') && (
+                  {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet' || shapeParams.type === 'ring' || shapeParams.type === 'bowl') && (
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">Pattern Type</Label>
                       <Select 
@@ -4245,6 +4387,8 @@ export default function Component() {
                               return (shapeParams as BraceletParams).patternType;
                             case 'ring':
                               return (shapeParams as RingParams).patternType;
+                            case 'bowl':
+                              return (shapeParams as BowlParams).patternType;
                             default:
                               return 'plain';
                           }
@@ -4296,6 +4440,14 @@ export default function Component() {
                               <SelectItem value="waves" className="text-white hover:bg-zinc-800">Waves</SelectItem>
                               <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
                               <SelectItem value="organic" className="text-white hover:bg-zinc-800">Organic</SelectItem>
+                            </>
+                          )}
+                          {shapeParams.type === 'bowl' && (
+                            <>
+                              <SelectItem value="geometric" className="text-white hover:bg-zinc-800">Geometric</SelectItem>
+                              <SelectItem value="stars" className="text-white hover:bg-zinc-800">Stars</SelectItem>
+                              <SelectItem value="leaves" className="text-white hover:bg-zinc-800">Leaves</SelectItem>
+                              <SelectItem value="abstract" className="text-white hover:bg-zinc-800">Abstract</SelectItem>
                             </>
                           )}
                         </SelectContent>
@@ -4385,6 +4537,43 @@ export default function Component() {
                       </Select>
                     </div>
                   )}
+
+                  {shapeParams.type === 'cylinderBase' && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Shape</Label>
+                      <Select 
+                        value={(shapeParams as CylinderBaseParams).shape}
+                        onValueChange={(value) => updateParam("shape", value)}
+                      >
+                        <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="cylinder" className="text-white hover:bg-zinc-800">Cylinder</SelectItem>
+                          <SelectItem value="flower" className="text-white hover:bg-zinc-800">Flower</SelectItem>
+                          <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {shapeParams.type === 'jewelryHolder' && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Base Style</Label>
+                      <Select 
+                        value={(shapeParams as JewelryHolderParams).baseStyle}
+                        onValueChange={(value) => updateParam("baseStyle", value)}
+                      >
+                        <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          <SelectItem value="square" className="text-white hover:bg-zinc-800">Square</SelectItem>
+                          <SelectItem value="round" className="text-white hover:bg-zinc-800">Round</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="py-4">
@@ -4395,32 +4584,17 @@ export default function Component() {
             </div>
 
             <div className="space-y-6 bg-zinc-800/50 backdrop-blur-sm border border-white/10 p-6 rounded-xl">
-              <h3 className="text-lg font-semibold">Pricing</h3>
+              <h3 className="text-lg font-semibold">Actions</h3>
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <div className="flex justify-between items-center mt-4">
-                    <span className="text-lg font-semibold">
-                      ${categories[currentCategory].priceInfo[selectedSize]?.price?.toFixed(2) || '0.00'}
-                    </span>
-                    <Button
-                      onClick={handleBuyNow}
-                      disabled={isLoading}
-                      className="bg-blue-500 hover:bg-blue-600 text-white"
-                    >
-                      {isLoading ? 'Loading...' : 'Place Order'}
-                    </Button>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-zinc-700">
-                    <Button
-                      onClick={handleExportSTL}
-                      disabled={isLoading}
-                      className="w-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download STL
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handleExportSTL}
+                    disabled={isLoading}
+                    className="w-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download STL
+                  </Button>
                 </div>
               </div>
             </div>
