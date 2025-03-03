@@ -2,7 +2,7 @@
 
 import { useState, useRef, Suspense, useCallback, useEffect, useMemo } from "react"
 import { Canvas } from "@react-three/fiber"
-import { OrbitControls, Environment, MeshTransmissionMaterial, Center } from "@react-three/drei"
+import { OrbitControls, Environment, MeshTransmissionMaterial, Center, PerspectiveCamera } from "@react-three/drei"
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -645,6 +645,9 @@ const materials: Record<string, MaterialConfig> = {
 interface BaseShapeParams {
   material: keyof typeof materials
   hasBottom?: boolean
+  scaleX?: number
+  scaleY?: number
+  scaleZ?: number
 }
 
 interface StandardShapeParams extends BaseShapeParams {
@@ -897,6 +900,11 @@ function Scene({ params }: SceneProps) {
   
   const { cameraPosition, scale, fov } = getProductSettings();
   
+  // Apply the product-specific settings
+  const scaleX = shapeParams.scaleX || 1;
+  const scaleY = shapeParams.scaleY || 1;
+  const scaleZ = shapeParams.scaleZ || 1;
+  
   return (
     <>
       <color attach="background" args={["#1a1a1a"]} />
@@ -905,7 +913,9 @@ function Scene({ params }: SceneProps) {
       <spotLight position={[-10, 10, -10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
       <spotLight position={[0, -10, 0]} angle={0.4} penumbra={0.8} intensity={1} castShadow />
       <Center scale={scale} position={[0, 0, 0]}>
-        <ParametricShape params={shapeParams} meshRef={meshRef} />
+        <group scale={[scaleX, scaleY, scaleZ]}>
+          <ParametricShape params={shapeParams} meshRef={meshRef} />
+        </group>
       </Center>
       <Environment preset="studio" background={false} />
       <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2.1} />
@@ -3985,6 +3995,11 @@ function MiniPreview({ categoryId, defaults }: { categoryId: string, defaults: S
   
   const { cameraPosition, scale, rotate, fov } = getProductSpecificSettings();
   
+  // Apply scale factors if they exist
+  const scaleX = defaults.scaleX || 1;
+  const scaleY = defaults.scaleY || 1;
+  const scaleZ = defaults.scaleZ || 1;
+  
   // Rotation animation for certain products
   const RotatingGroup = ({ children, rotate }: { children: React.ReactNode, rotate: boolean }) => {
     const groupRef = useRef<THREE.Group>(null);
@@ -4005,9 +4020,13 @@ function MiniPreview({ categoryId, defaults }: { categoryId: string, defaults: S
           <color attach="background" args={["#1a1a1a"]} />
           <ambientLight intensity={0.8} />
           <spotLight position={[10, 10, 10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
+          <spotLight position={[-10, 10, -10]} angle={0.4} penumbra={0.8} intensity={2.5} castShadow />
+          <spotLight position={[0, -10, 0]} angle={0.4} penumbra={0.8} intensity={1} castShadow />
           <Center scale={scale} position={[0, 0, 0]}>
             <RotatingGroup rotate={rotate}>
-              <ParametricShape params={defaults} meshRef={meshRef} />
+              <group scale={[scaleX, scaleY, scaleZ]}>
+                <ParametricShape params={defaults} meshRef={meshRef} />
+              </group>
             </RotatingGroup>
           </Center>
           <Environment preset="studio" background={false} />
@@ -4019,7 +4038,12 @@ function MiniPreview({ categoryId, defaults }: { categoryId: string, defaults: S
 
 export default function Component() {
   const [currentCategory, setCurrentCategory] = useState<keyof typeof categories>("cylinderBase")
-  const [shapeParams, setShapeParams] = useState<ShapeParams>(categories[currentCategory].defaults)
+  const [shapeParams, setShapeParams] = useState<ShapeParams>({
+    ...categories[currentCategory].defaults,
+    scaleX: 1,
+    scaleY: 1,
+    scaleZ: 1
+  })
   const [selectedSize, setSelectedSize] = useState<keyof CategoryPriceInfo>('small')
   const [isLoading, setIsLoading] = useState(false)
   const [key, setKey] = useState(0)
@@ -4136,7 +4160,14 @@ export default function Component() {
 
   const switchCategory = (categoryId: string) => {
     setCurrentCategory(categoryId as keyof typeof categories)
-    setShapeParams(categories[categoryId as keyof typeof categories].defaults)
+    // Preserve scale values when switching categories
+    const { scaleX, scaleY, scaleZ } = shapeParams;
+    setShapeParams({
+      ...categories[categoryId as keyof typeof categories].defaults,
+      scaleX: scaleX || 1,
+      scaleY: scaleY || 1,
+      scaleZ: scaleZ || 1
+    })
     setKey((k) => k + 1)
   }
 
@@ -4359,7 +4390,7 @@ export default function Component() {
                 <div className="space-y-6">
                   <div className="space-y-3">
                     <Label className="text-sm font-medium">Rendering</Label>
-                    <Select value={shapeParams.material} onValueChange={(value) => updateParam("material", value)}>
+                    <Select value={shapeParams.material || 'shiny'} onValueChange={(value) => updateParam("material", value)}>
                       <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
                         <SelectValue />
                       </SelectTrigger>
@@ -4370,7 +4401,9 @@ export default function Component() {
                       </SelectContent>
                     </Select>
                   </div>
-
+                  
+                  {/* XYZ dimension sliders removed from customizable section */}
+                  
                   {(shapeParams.type === 'coaster' || shapeParams.type === 'wallArt' || shapeParams.type === 'candleHolder' || shapeParams.type === 'bracelet' || shapeParams.type === 'ring' || shapeParams.type === 'bowl') && (
                     <div className="space-y-3">
                       <Label className="text-sm font-medium">Pattern Type</Label>
@@ -4576,9 +4609,74 @@ export default function Component() {
                   )}
                 </div>
               ) : (
-                <div className="py-4">
-                  <p className="text-zinc-400 mb-4">This is a ready-made design that doesn't support customization.</p>
-                  <p className="text-zinc-400">You can directly download the STL file or place an order.</p>
+                <div className="py-4 space-y-6">
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Rendering</Label>
+                    <Select value={shapeParams.material || 'shiny'} onValueChange={(value) => updateParam("material", value)}>
+                      <SelectTrigger className="bg-zinc-900 border-zinc-700 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent position="popper" side="bottom" className="bg-zinc-900 border-zinc-700">
+                        <SelectItem value="shiny" className="text-white hover:bg-zinc-800">Shiny</SelectItem>
+                        <SelectItem value="matte" className="text-white hover:bg-zinc-800">Matte</SelectItem>
+                        <SelectItem value="wireframe" className="text-white hover:bg-zinc-800">Wireframe</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {!categories[currentCategory].customizable && (
+                    <>
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Width (X)</Label>
+                        <div className="flex items-center space-x-2">
+                          <Slider
+                            defaultValue={[1]}
+                            value={[shapeParams.scaleX || 1]}
+                            min={0.5}
+                            max={2}
+                            step={0.1}
+                            onValueChange={([value]) => updateParam("scaleX", value)}
+                            className="flex-1"
+                          />
+                          <span className="w-12 text-center text-sm">{(shapeParams.scaleX || 1).toFixed(1)}x</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Height (Y)</Label>
+                        <div className="flex items-center space-x-2">
+                          <Slider
+                            defaultValue={[1]}
+                            value={[shapeParams.scaleY || 1]}
+                            min={0.5}
+                            max={2}
+                            step={0.1}
+                            onValueChange={([value]) => updateParam("scaleY", value)}
+                            className="flex-1"
+                          />
+                          <span className="w-12 text-center text-sm">{(shapeParams.scaleY || 1).toFixed(1)}x</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Depth (Z)</Label>
+                        <div className="flex items-center space-x-2">
+                          <Slider
+                            defaultValue={[1]}
+                            value={[shapeParams.scaleZ || 1]}
+                            min={0.5}
+                            max={2}
+                            step={0.1}
+                            onValueChange={([value]) => updateParam("scaleZ", value)}
+                            className="flex-1"
+                          />
+                          <span className="w-12 text-center text-sm">{(shapeParams.scaleZ || 1).toFixed(1)}x</span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-zinc-400 mt-4">This is a ready-made design with basic dimension adjustments.</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
