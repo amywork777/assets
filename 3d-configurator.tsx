@@ -4234,12 +4234,12 @@ export default function Component() {
     });
   }, [searchQuery, categoryFilter]);
 
-  // Limit categories to 6 if not showing all
+  // Limit categories to 4 if not showing all
   const displayedCategories = useMemo(() => {
-    return showAllProducts ? filteredCategories : filteredCategories.slice(0, 6);
+    return showAllProducts ? filteredCategories : filteredCategories.slice(0, 4);
   }, [filteredCategories, showAllProducts]);
 
-  const hasMoreProducts = filteredCategories.length > 6;
+  const hasMoreProducts = filteredCategories.length > 4;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white font-sans antialiased">
@@ -4329,7 +4329,7 @@ export default function Component() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-3 max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-3 max-w-6xl mx-auto">
             {displayedCategories.map(([id, { name, customizable, defaults }]) => (
               <div 
                 key={id} 
@@ -4365,7 +4365,7 @@ export default function Component() {
               className="mt-4 w-full text-black"
               onClick={() => setShowAllProducts(!showAllProducts)}
             >
-              {showAllProducts ? "Show Less" : `Show More (${filteredCategories.length - 6} more)`}
+              {showAllProducts ? "Show Less" : `Show More (${filteredCategories.length - 4} more)`}
             </Button>
           )}
         </div>
