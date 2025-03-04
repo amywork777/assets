@@ -6,9 +6,10 @@ import { OrbitControls, Environment, MeshTransmissionMaterial, Center, Perspecti
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Download } from "lucide-react"
+import { Download, Upload } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { STLExporter } from 'three/addons/exporters/STLExporter.js'
+import { STLLoader } from 'three/addons/loaders/STLLoader.js'
 import * as THREE from 'three'
 import { DoubleSide } from 'three'
 import Image from 'next/image'
@@ -16,6 +17,7 @@ import { cloneDeep } from 'lodash'
 import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import Link from 'next/link'
 import { useFrame } from "@react-three/fiber"
+import { supabase, uploadSTLFile, testSupabaseConnection, UploadedModel } from './lib/supabase'
 
 interface PriceInfo {
   dimensions: string;
@@ -605,12 +607,18 @@ interface MaterialConfig {
 
 const materials: Record<string, MaterialConfig> = {
   shiny: {
-    type: 'standard',
+    type: 'physical',
     props: {
+      color: '#ffffff',
       metalness: 0.9,
-      roughness: 0.3,
-      clearcoat: 1,
+      roughness: 0.1,
+      reflectivity: 1.0,
+      envMapIntensity: 2.0,
+      metalness: 1.0,
+      roughness: 0.2,
+      clearcoat: 1.0,
       clearcoatRoughness: 0.1,
+      envMapIntensity: 1.5,
       opacity: 1,
       transparent: true,
       side: DoubleSide,
@@ -796,7 +804,14 @@ interface NapkinHolderParams extends BaseShapeParams {
   openingWidth: number;
 }
 
-type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams | RingParams | MonitorStandParams | JewelryHolderParams | NapkinHolderParams
+// Update ShapeParams type to include uploaded type
+interface UploadedShapeParams extends BaseShapeParams {
+  type: 'uploaded'
+  uploadedGeometry?: THREE.BufferGeometry
+}
+
+// Update the ShapeParams union type
+type ShapeParams = StandardShapeParams | CoasterShapeParams | WallArtParams | CandleHolderParams | BowlParams | CylinderBaseParams | PhoneHolderParams | BraceletParams | PencilHolderParams | CharmAttachmentParams | RingParams | MonitorStandParams | JewelryHolderParams | NapkinHolderParams | UploadedShapeParams
 
 interface ParametricShapeProps {
   params: ShapeParams
@@ -3737,6 +3752,8 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
   const geometry = useMemo(() => {
     const params_ = cloneDeep(params)
     switch (params_.type) {
+      case 'uploaded':
+        return params_.uploadedGeometry || generateStandardGeometry({ ...params_ as unknown as StandardShapeParams })
       case 'standard':
         return generateStandardGeometry(params_ as StandardShapeParams)
       case 'coaster':
@@ -3769,6 +3786,47 @@ function ParametricShape({ params, meshRef }: ParametricShapeProps) {
         return generateStandardGeometry(params_ as StandardShapeParams)
     }
   }, [params])
+
+  // Add this function to handle camera framing
+  const frameGeometry = useCallback((geom: THREE.BufferGeometry | { vertices: number[], indices: number[], normals: number[] }) => {
+    const geometry = isThreeBufferGeometry(geom) ? geom : new THREE.BufferGeometry().setAttribute(
+      'position',
+      new THREE.Float32BufferAttribute(geom.vertices, 3)
+    ).setAttribute(
+      'normal',
+      new THREE.Float32BufferAttribute(geom.normals, 3)
+    ).setIndex(
+      geom.indices
+    );
+
+    if (!geometry.boundingBox) {
+      geometry.computeBoundingBox();
+    }
+    
+    const boundingBox = geometry.boundingBox;
+    if (boundingBox && meshRef.current && meshRef.current.parent) {
+      const scene = meshRef.current.parent;
+      const camera = scene.children.find(child => child instanceof THREE.PerspectiveCamera);
+      if (camera instanceof THREE.PerspectiveCamera) {
+        const size = new THREE.Vector3();
+        boundingBox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        const fov = camera.fov * (Math.PI / 180);
+        const cameraZ = Math.abs(maxDim / Math.tan(fov / 2)) * 2.5;
+        
+        camera.position.set(cameraZ * 0.7, cameraZ * 0.7, cameraZ);
+        camera.lookAt(0, 0, 0);
+        camera.updateProjectionMatrix();
+      }
+    }
+  }, [meshRef]);
+
+  // Frame the geometry when it changes
+  useEffect(() => {
+    if (geometry) {
+      frameGeometry(geometry);
+    }
+  }, [geometry, frameGeometry]);
 
   const materialConfig = materials[params.material]
 
@@ -4054,6 +4112,37 @@ export default function Component() {
   const [searchQuery, setSearchQuery] = useState('') // Add search query state
   const [showAllProducts, setShowAllProducts] = useState(false) // Add state for showing all products
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'customizable' | 'ready-made'>('all') // Remove ai-generated and my-uploads options
+  const [uploadedSTL, setUploadedSTL] = useState<THREE.BufferGeometry | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedModels, setUploadedModels] = useState<UploadedModel[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  // Add new state variables for upload modal
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadDescription, setUploadDescription] = useState('');
+  // Add isAdmin state at the top of the component
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Extract fetchUploadedModels to be reusable
+  const fetchUploadedModels = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('assets')
+      .select('*')
+      .or('approved.eq.true,type.eq.ready-made')
+      .order('uploaded_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching models:', error)
+    } else {
+      setUploadedModels(data || [])
+    }
+  }, [])
+
+  // Fetch uploaded models on component mount
+  useEffect(() => {
+    fetchUploadedModels()
+  }, [fetchUploadedModels])
 
   const handleExportSTL = useCallback(async () => {
     if (!meshRef.current) {
@@ -4212,9 +4301,175 @@ export default function Component() {
     }
   }, [meshRef, currentCategory, customOrderEmail])
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Set the selected file and initialize the title with the file name (without extension)
+    setSelectedFile(file);
+    setUploadTitle(file.name.replace(/\.[^/.]+$/, ''));
+    setIsUploadModalOpen(true);
+  };
+
+  const handleUploadSubmit = async () => {
+    if (!selectedFile || !uploadTitle) return;
+
+    setIsUploading(true);
+    try {
+      // Test Supabase connection
+      const { data: testData, error: testError } = await supabase.from('assets').select('*').limit(1);
+      if (testError) throw new Error(`Database connection failed: ${testError.message}`);
+
+      const fileName = `${Date.now()}-${selectedFile.name}`;
+
+      // Upload the file
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('stls')
+        .upload(fileName, selectedFile);
+
+      if (uploadError) throw uploadError;
+
+      // Get the public URL for the uploaded file
+      const { data: { publicUrl } } = supabase.storage
+        .from('stls')
+        .getPublicUrl(fileName);
+
+      // Create database entry
+      const { data: modelData, error: modelError } = await supabase.from('assets').insert([
+        {
+          name: uploadTitle,
+          description: uploadDescription,
+          file_path: fileName,
+          type: 'uploaded',
+          material: 'matte',
+          customizable: true,  // Changed from false to true
+          approved: true,
+          submitted_by: 'user',
+          uploaded_at: new Date().toISOString(),
+          price: 0,
+          dimensions: {
+            width: 0,
+            height: 0,
+            depth: 0
+          }
+        },
+      ]).select();
+
+      if (modelError) throw modelError;
+
+      // Refresh the models list
+      await fetchUploadedModels();
+
+      // Reset modal state
+      setIsUploadModalOpen(false);
+      setSelectedFile(null);
+      setUploadTitle('');
+      setUploadDescription('');
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Error uploading file');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Load an uploaded model
+  const loadUploadedModel = useCallback(async (model: UploadedModel) => {
+    try {
+      setIsLoading(true);
+      console.log('Loading model:', model);
+
+      // Download the file from Supabase storage
+      const { data, error } = await supabase.storage
+        .from('stls')
+        .download(model.file_path);
+
+      if (error) {
+        console.error('Storage download error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('No data received from storage');
+      }
+
+      // Convert the blob to geometry
+      const loader = new STLLoader();
+      const arrayBuffer = await data.arrayBuffer();
+      const geometry = loader.parse(arrayBuffer);
+      
+      // Center the geometry and adjust scale
+      geometry.computeBoundingBox();
+      const boundingBox = geometry.boundingBox;
+      if (boundingBox) {
+        const center = new THREE.Vector3();
+        boundingBox.getCenter(center);
+        geometry.translate(-center.x, -center.y, -center.z);
+        
+        // Calculate size and scale
+        const size = new THREE.Vector3();
+        boundingBox.getSize(size);
+        const maxDim = Math.max(size.x, size.y, size.z);
+        
+        // Scale the model to be much larger (50 units instead of 10)
+        const scale = 50 / maxDim;
+        
+        // Set the shape params with the calculated scale
+        setShapeParams({
+          type: 'uploaded',
+          material: 'matte',  // Change from 'shiny' to 'matte' for uploaded models
+          uploadedGeometry: geometry,
+          scaleX: scale,
+          scaleY: scale,
+          scaleZ: scale,
+        });
+
+        setUploadedSTL(geometry);
+      }
+
+    } catch (error) {
+      console.error('Error loading model:', error);
+      alert('Failed to load model. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Filter categories based on search query and category filter
   const filteredCategories = useMemo(() => {
-    return Object.entries(categories).filter(([id, { name, description, customizable }]) => {
+    // Start with the regular categories
+    let allCategories = Object.entries(categories).map(([id, category]) => ({
+      id,
+      ...category,
+      isUploaded: false
+    }));
+    
+    // Add uploaded models as categories
+    const uploadedCategories = uploadedModels.map(model => ({
+      id: `uploaded-${model.id}`,
+      name: model.name,
+      description: model.description || '',
+      customizable: false,
+      isUploaded: true,
+      model: model,
+      priceInfo: {
+        small: {
+          dimensions: 'default',
+          price: 0,
+          priceId: ''
+        }
+      },
+      defaults: {
+        type: 'uploaded' as const,
+        material: 'matte',
+      }
+    }));
+    
+    allCategories = [...allCategories, ...uploadedCategories];
+    
+    // Filter based on search and category
+    return allCategories.filter(({ name, description, customizable, isUploaded }) => {
       // Apply search filter
       const matchesSearch = 
         name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -4224,15 +4479,23 @@ export default function Component() {
       if (categoryFilter === 'all') {
         return matchesSearch;
       } else if (categoryFilter === 'customizable') {
-        return matchesSearch && customizable;
+        return matchesSearch && customizable && !isUploaded;
       } else if (categoryFilter === 'ready-made') {
-        return matchesSearch && !customizable;
-      } 
-      // Removed the ai-generated and my-uploads filters
+        return matchesSearch && (!customizable || isUploaded);
+      }
       
       return false;
     });
-  }, [searchQuery, categoryFilter]);
+  }, [searchQuery, categoryFilter, categories, uploadedModels]);
+
+  // Update the click handler for categories to handle uploaded models
+  const handleCategoryClick = (category: any) => {
+    if (category.isUploaded) {
+      loadUploadedModel(category.model);
+    } else {
+      switchCategory(category.id);
+    }
+  };
 
   // Limit categories to 4 if not showing all
   const displayedCategories = useMemo(() => {
@@ -4241,46 +4504,154 @@ export default function Component() {
 
   const hasMoreProducts = filteredCategories.length > 4;
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 text-white font-sans antialiased">
-      <div className="container mx-auto min-h-screen flex flex-col gap-8 p-6">
-        <header className="flex flex-col gap-4 pt-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/taiyaki-logo.svg"
-                alt="Taiyaki Logo"
-                width={80}
-                height={80}
-                className="text-white"
+  // Add UploadModal component
+  const UploadModal = () => {
+    return (
+      <div className={`fixed inset-0 z-50 ${isUploadModalOpen ? 'block' : 'hidden'}`}>
+        <div className="fixed inset-0 bg-black opacity-50"></div>
+        <div className="fixed inset-0 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl w-96" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-xl font-bold mb-4 text-gray-900">Upload STL File</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Selected File</label>
+              <p className="mt-1 text-sm text-gray-500">{selectedFile?.name}</p>
+            </div>
+            <div className="mb-4">
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700">Title</label>
+              <input
+                type="text"
+                id="title"
+                value={uploadTitle}
+                onChange={(e) => setUploadTitle(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 bg-white"
+                required
+                autoFocus
               />
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold tracking-tight">3D Parametric Design</h1>
-                  <span className="text-zinc-400 text-sm">
-                    Built by{" "}
-                    <a
-                      href="https://taiyaki.ai"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      taiyaki.ai
-                    </a>
-                  </span>
-                </div>
-                <p className="text-zinc-400 text-sm mt-1">Design, customize, and 3D print your perfect parametric models</p>
-                <div className="mt-2 flex items-center gap-4">
-                  <a href="/" className="text-blue-400 hover:text-blue-300 transition-colors text-sm">Home</a>
-                  <a href="/ai-cad" className="text-blue-400 hover:text-blue-300 transition-colors text-sm">AI CAD Generator</a>
-                </div>
+            </div>
+            <div className="mb-4">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
+              <textarea
+                id="description"
+                value={uploadDescription}
+                onChange={(e) => setUploadDescription(e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 bg-white p-2 resize-y min-h-[100px]"
+                rows={4}
+                placeholder="Enter a description for your model..."
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setIsUploadModalOpen(false);
+                  setSelectedFile(null);
+                  setUploadTitle('');
+                  setUploadDescription('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadSubmit}
+                disabled={!uploadTitle || isUploading}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUploading ? 'Uploading...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Add delete handler function
+  const handleDeleteModel = async (modelId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering the card click
+    
+    if (!confirm('Are you sure you want to delete this model?')) return;
+
+    try {
+      // Delete from storage first
+      const model = uploadedModels.find(m => m.id === modelId);
+      if (!model) return;
+
+      const { error: storageError } = await supabase.storage
+        .from('stls')
+        .remove([model.file_path]);
+
+      if (storageError) throw storageError;
+
+      // Then delete from database
+      const { error: dbError } = await supabase
+        .from('assets')
+        .delete()
+        .eq('id', modelId);
+
+      if (dbError) throw dbError;
+
+      // Refresh the models list
+      await fetchUploadedModels();
+    } catch (error) {
+      console.error('Error deleting model:', error);
+      alert('Failed to delete model');
+    }
+  };
+
+  // Add admin toggle button in the header
+  return (
+    <div className="min-h-screen bg-zinc-900 text-white pb-20">
+      <div className="sticky top-0 z-50 w-full border-b border-white/10 bg-zinc-900/50 backdrop-blur-sm">
+        <div className="container flex h-14 max-w-screen-2xl items-center">
+          <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+            <div className="w-full flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link href="/" className="font-semibold">
+                  Home
+                </Link>
+                <button
+                  onClick={() => setIsAdmin(!isAdmin)}
+                  className={`px-3 py-1 rounded text-sm ${
+                    isAdmin ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-600 hover:bg-gray-700'
+                  }`}
+                >
+                  {isAdmin ? 'Exit Admin Mode' : 'Admin Mode'}
+                </button>
+              </div>
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  accept=".stl"
+                  onChange={handleFileUpload}
+                  ref={fileInputRef}
+                  className="hidden"
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2"
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="animate-spin">⏳</span>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      Upload STL to Library
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </div>
-          <p className="text-zinc-400 text-sm">{categories[currentCategory].description}</p>
-        </header>
+        </div>
+      </div>
 
-        <div>
+      <div className="container max-w-screen-2xl pt-8">
+        {/* Products grid */}
+        <div className="mb-8">
           <h2 className="text-lg font-semibold mb-4">Products</h2>
           
           {/* Category Filter Tabs */}
@@ -4328,29 +4699,42 @@ export default function Component() {
               )}
             </div>
           </div>
-          
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-3 max-w-6xl mx-auto">
-            {displayedCategories.map(([id, { name, customizable, defaults }]) => (
-              <div 
-                key={id} 
-                className={`border rounded-lg overflow-hidden ${
-                  currentCategory === id ? 'border-blue-500' : 'border-zinc-700'
-                } hover:border-blue-400 transition-colors cursor-pointer bg-zinc-800/50`}
-                onClick={() => switchCategory(id as keyof typeof categories)}
+
+          {/* Products grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 gap-4">
+            {displayedCategories.map((category) => (
+              <div
+                key={category.id}
+                className="bg-white/5 p-4 rounded-lg cursor-pointer hover:bg-white/10 transition-colors relative"
+                onClick={() => handleCategoryClick(category)}
               >
-                <MiniPreview 
-                  categoryId={id as string} 
-                  defaults={defaults}
-                />
-                <div className="p-3">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-medium text-white text-sm">{name}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      customizable 
-                        ? 'bg-emerald-800 text-emerald-100' 
-                        : 'bg-amber-800 text-amber-100'
+                <div className="flex flex-col h-full">
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-medium text-white pr-20">{category.name}</h3>
+                      {isAdmin && category.isUploaded && (
+                        <button
+                          onClick={(e) => handleDeleteModel(category.model.id, e)}
+                          className="absolute top-2 right-2 p-1 bg-red-500 hover:bg-red-600 rounded-full text-white"
+                          title="Delete model"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">{category.description}</p>
+                  </div>
+                  <div className="mt-4">
+                    <span className={`inline-block px-2 py-1 text-xs rounded-full ${
+                      category.isUploaded
+                        ? 'bg-blue-500 text-white'
+                        : category.customizable
+                          ? 'bg-emerald-800 text-emerald-100' 
+                          : 'bg-amber-800 text-amber-100'
                     }`}>
-                      {customizable ? 'Customizable' : 'Ready-made'}
+                      {category.isUploaded ? 'Ready Made' : category.customizable ? 'Customizable' : 'Ready-made'}
                     </span>
                   </div>
                 </div>
@@ -4736,6 +5120,8 @@ export default function Component() {
           </div>
         </div>
       )}
+      {/* Upload Modal */}
+      <UploadModal />
     </div>
   )
 }
