@@ -8,11 +8,18 @@ import { Button } from '@/components/ui/button'
 function SuccessContent() {
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
+  const stlId = searchParams.get('stl_id')
 
   useEffect(() => {
     const downloadSTL = async () => {
       try {
-        const response = await fetch(`/api/download-stl?session_id=${sessionId}`)
+        // Only try to download if we have both IDs
+        if (!stlId) {
+          console.log('No STL ID provided, skipping download')
+          return
+        }
+        
+        const response = await fetch(`/api/download-stl?session_id=${sessionId}&stl_id=${stlId}`)
         
         if (response.ok) {
           // Get the filename from the Content-Disposition header
@@ -39,13 +46,13 @@ function SuccessContent() {
     if (sessionId) {
       downloadSTL()
     }
-  }, [sessionId])
+  }, [sessionId, stlId])
 
   return (
     <div className="max-w-md w-full mx-4 p-8 bg-zinc-800/50 backdrop-blur-sm border border-white/10 rounded-xl text-center space-y-6">
       <h1 className="text-3xl font-bold">Thank you for your purchase!</h1>
       <p className="text-zinc-300">
-        {sessionId ? 'Your STL file will download automatically.' : 'Your order has been confirmed.'}
+        {stlId ? 'Your STL file will download automatically.' : 'Your order has been confirmed.'}
       </p>
       <p className="text-zinc-300">
         You will receive a confirmation email shortly.

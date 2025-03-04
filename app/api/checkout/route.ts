@@ -1,10 +1,5 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import crypto from 'crypto'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27.acacia'
-})
 
 // Simple in-memory cache for STL data (in production, use Redis or similar)
 const stlCache = new Map<string, string>()
@@ -13,13 +8,8 @@ export async function POST(req: Request) {
   try {
     const { priceId, stlData, productName } = await req.json()
     
-    console.log('Creating checkout session with:', { priceId, productName })
+    console.log('Creating dummy checkout session for:', { productName })
     
-    // Validate required fields
-    if (!priceId) {
-      return NextResponse.json({ error: 'Price ID is required' }, { status: 400 })
-    }
-
     // Generate a unique ID for the STL data
     let stlId: string | undefined
     if (stlData) {
@@ -29,26 +19,16 @@ export async function POST(req: Request) {
       setTimeout(() => stlCache.delete(stlId), 3600000)
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      ...(stlData ? {} : { shipping_address_collection: { allowed_countries: ['US'] } }),
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}`,
-      metadata: {
-        productName: productName || 'Unknown Product',
-        stlId: stlId || '',
-      },
-    })
+    // Create a dummy session ID
+    const sessionId = crypto.randomBytes(16).toString('hex')
 
-    console.log('Checkout session created:', session.id)
-    return NextResponse.json({ url: session.url })
+    console.log('Dummy checkout session created:', sessionId)
+    // Return a dummy success URL
+    return NextResponse.json({ 
+      url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/success?session_id=${sessionId}`,
+      sessionId: sessionId,
+      stlId: stlId
+    })
   } catch (error) {
     console.error('Error in checkout route:', error)
     return NextResponse.json(
@@ -67,27 +47,13 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const priceId = searchParams.get('priceId')
 
-    if (!priceId) {
-      return NextResponse.json({ error: 'Price ID is required' }, { status: 400 })
-    }
+    // Create a dummy session ID
+    const sessionId = crypto.randomBytes(16).toString('hex')
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      shipping_address_collection: {
-        allowed_countries: ['US'],
-      },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}`,
+    // Return a dummy success URL
+    return NextResponse.json({ 
+      url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/success?session_id=${sessionId}` 
     })
-
-    return NextResponse.json({ url: session.url })
   } catch (error) {
     console.error('Error in checkout route:', error)
     return NextResponse.json(
