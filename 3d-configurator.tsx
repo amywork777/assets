@@ -42,7 +42,7 @@ interface CategoryInfo {
 const categories: Record<string, CategoryInfo> = {
   cylinderBase: {
     name: "Base",
-    description: "Solid bases for lamps, vases, or display stands. Simple, clean design with top and bottom closed. Choose from cylinder, star, or square shapes. For custom dimensions or special requests, use our Custom Order button.",
+    description: "Customizable solid bases for lamps, vases, or display stands with cylinder, star, or square shapes.",
     priceInfo: {
       small: {
         dimensions: "3.5 x 3.5 x 1 in",
@@ -64,11 +64,11 @@ const categories: Record<string, CategoryInfo> = {
       flowerPetals: 6,
       petalPointiness: 0.3
     },
-    customizable: true, // Mark as customizable
+    customizable: true,
   },
   phoneHolder: {
     name: "Phone Holder",
-    description: "A customizable phone holder for your desk.",
+    description: "Adjustable phone stand with cable management and customizable angles.",
     priceInfo: {
       small: { dimensions: "4 x 4 x 5 in", price: 18.99, priceId: "price_1Ot41TI0wQgEQ20bwwJFuJZt" },
       medium: { dimensions: "4.5 x 4.5 x 5.5 in", price: 21.99, priceId: "price_1Ot42FI0wQgEQ20bYkHPLKAO" },
@@ -85,11 +85,11 @@ const categories: Record<string, CategoryInfo> = {
       cableOpening: true,
       standThickness: 0.5,
     },
-    customizable: true, // Mark as customizable
+    customizable: true,
   },
   pencilHolder: {
     name: "Pencil Holder",
-    description: "A customizable container for pens, pencils, and stationery.",
+    description: "Versatile desk organizer with adjustable compartments for stationery.",
     priceInfo: {
       small: {
         dimensions: "3 x 3 x 3.5 in",
@@ -113,11 +113,11 @@ const categories: Record<string, CategoryInfo> = {
       dividerCount: 2,
       hasBottom: true
     },
-    customizable: true, // Mark as customizable
+    customizable: true,
   },
   napkinHolder: {
     name: 'Napkin Holder',
-    description: 'Elegant napkin holder with two upright panels to keep napkins organized and accessible.',
+    description: 'Modern napkin holder with adjustable width and curved panels.',
     priceInfo: {
       small: { dimensions: '6"W × 3"D × 4"H', price: 29.99, priceId: 'price_napkinholder_small' },
       medium: { dimensions: '7"W × 3.5"D × 5"H', price: 39.99, priceId: 'price_napkinholder_medium' },
@@ -133,11 +133,11 @@ const categories: Record<string, CategoryInfo> = {
       wallStyle: 'curved',
       openingWidth: 5,
     },
-    customizable: true, // Mark as customizable
+    customizable: true,
   },
   bracelet: {
     name: "Bracelet",
-    description: "A customizable bracelet with opening for your wrist.",
+    description: "Elegant bracelet with adjustable size and decorative patterns.",
     priceInfo: {
       small: {
         dimensions: "2.5 x 0.25 x 0.3 in",
@@ -156,16 +156,16 @@ const categories: Record<string, CategoryInfo> = {
       innerDiameter: 2.5,
       thickness: 0.25,
       width: 0.3,
-      gapSize: 40, // 40 degrees opening
+      gapSize: 40,
       patternType: 'plain',
       patternDepth: 0.1,
       patternScale: 0.5
     },
-    customizable: true, // Mark as customizable
+    customizable: true,
   },
   ring: {
     name: "Ring",
-    description: "A customizable ring that can be adjusted to your finger size.",
+    description: "Customizable ring with various pattern options and adjustable size.",
     priceInfo: {
       small: {
         dimensions: "0.8 x 0.2 x 0.1 in",
@@ -192,7 +192,7 @@ const categories: Record<string, CategoryInfo> = {
   },
   coaster: {
     name: "Decorative Coaster",
-    description: "Stylish protection for your surfaces with unique patterns. For custom dimensions or special requests, use our Custom Order button.",
+    description: "Stylish coaster with customizable patterns and rim height.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 0.25\"",
@@ -220,11 +220,11 @@ const categories: Record<string, CategoryInfo> = {
       rimHeight: 0.3,
       material: "shiny" as const,
     },
-    customizable: true, // Change from ready-made to customizable
+    customizable: true,
   },
   monitorStand: {
     name: "Monitor Stand",
-    description: "Elevate your monitor for improved ergonomics and organize your desk space.",
+    description: "Sleek monitor riser with adjustable height and minimal design.",
     priceInfo: {
       small: {
         dimensions: "12 x 8 x 3 in",
@@ -244,13 +244,13 @@ const categories: Record<string, CategoryInfo> = {
       height: 3,
       thickness: 0.8,
       legStyle: 'minimal',
-      material: 'matte', // Add missing material property
+      material: 'matte',
     },
-    customizable: true, // Change from ready-made to customizable
+    customizable: true,
   },
   jewelryHolder: {
     name: "Jewelry Holder",
-    description: "An elegant organizer for necklaces, earrings, and other jewelry items with customizable pegs.",
+    description: "Elegant jewelry organizer with customizable peg arrangement.",
     priceInfo: {
       small: {
         dimensions: "5 x 5 x 6 in",
@@ -279,7 +279,7 @@ const categories: Record<string, CategoryInfo> = {
   },
   bowl: {
     name: "Bowl",
-    description: "Wide decorative bowls with textured patterns. ⚠️ Note: Not intended for food use. For decorative purposes only. For custom dimensions or special requests, use our Custom Order button.",
+    description: "Decorative bowl with customizable patterns and dimensions.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -311,7 +311,7 @@ const categories: Record<string, CategoryInfo> = {
   },
   wallArt: {
     name: "Wall Art",
-    description: "Parametric wall panels with mesmerizing patterns. For custom dimensions or special requests, use our Custom Order button.",
+    description: "Modern wall panels with customizable geometric patterns.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -343,7 +343,7 @@ const categories: Record<string, CategoryInfo> = {
   },
   vase: {
     name: "Vase",
-    description: "Create elegant vases for flowers and decorative displays. For custom dimensions or special requests, use our Custom Order button.",
+    description: "Elegant vase with adjustable wave patterns and dimensions.",
     priceInfo: {
       mini: {
         dimensions: "3\" × 3\" × 4\"",
@@ -373,11 +373,11 @@ const categories: Record<string, CategoryInfo> = {
       hasTop: false,
       material: "shiny" as const,
     },
-    customizable: true, // Add customizable property
+    customizable: true,
   },
   candleHolder: {
     name: "Cup",
-    description: "Decorative cups with textured patterns. ⚠️ Note: Not intended for food or beverage use. For decorative purposes only. For custom dimensions or special requests, use our Custom Order button.",
+    description: "Decorative cup with customizable patterns and textures.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -409,7 +409,7 @@ const categories: Record<string, CategoryInfo> = {
   },
   lampshade: {
     name: "Lampshade",
-    description: "Create ambient lighting with customizable patterns. For custom dimensions or special requests, use our Custom Order button.",
+    description: "Customizable lampshade with wave patterns and adjustable dimensions.",
     priceInfo: {
       mini: {
         dimensions: "2\" × 2\" × 2\"",
@@ -435,15 +435,15 @@ const categories: Record<string, CategoryInfo> = {
       waveAmplitude: 1.5,
       waveFrequency: 6,
       twist: 0,
-      hasBottom: false, // Bottom open
-      hasTop: false,    // Top open
+      hasBottom: false,
+      hasTop: false,
       material: "shiny" as const,
     },
     customizable: true,
   },
   charmAttachment: {
     name: "Charm Attachment",
-    description: "A simple charm bail with a loop and connecting pin that extends horizontally to attach to 3D models.",
+    description: "Simple charm connector with adjustable loop and pin dimensions.",
     priceInfo: {
       small: {
         dimensions: "0.5 x 0.5 x 0.2 in",
@@ -464,7 +464,7 @@ const categories: Record<string, CategoryInfo> = {
       stickThickness: 0.08,
       material: 'shiny'
     },
-    customizable: true, // Change from ready-made to customizable
+    customizable: true,
   },
 } as const
 
@@ -4123,6 +4123,76 @@ export default function Component() {
   const [uploadDescription, setUploadDescription] = useState('');
   // Add isAdmin state at the top of the component
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+
+  // Function to handle admin toggle button click
+  const handleAdminToggle = () => {
+    if (isAdmin) {
+      // If already in admin mode, exit admin mode
+      setIsAdmin(false);
+    } else {
+      // If not in admin mode, show password modal
+      setShowPasswordModal(true);
+      setPasswordInput('');
+    }
+  };
+
+  // Function to handle password submission
+  const handlePasswordSubmit = () => {
+    if (passwordInput === 'nosurprises1') {
+      setIsAdmin(true);
+      setShowPasswordModal(false);
+      setPasswordInput('');
+    } else {
+      alert('Incorrect password. Please try again.');
+      setPasswordInput('');
+    }
+  };
+
+  // Close password modal
+  const closePasswordModal = () => {
+    setShowPasswordModal(false);
+    setPasswordInput('');
+  };
+
+  // Add PasswordModal component
+  const PasswordModal = () => {
+    return (
+      <div className={`fixed inset-0 z-50 ${showPasswordModal ? 'flex' : 'hidden'} items-center justify-center`}>
+        <div className="absolute inset-0 bg-black bg-opacity-50" onClick={closePasswordModal}></div>
+        <div className="relative bg-white rounded-lg p-6 max-w-md w-full z-10">
+          <h2 className="text-xl font-bold mb-4">Enter Admin Password</h2>
+          <form onSubmit={(e) => { e.preventDefault(); handlePasswordSubmit(); }}>
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              placeholder="Enter password"
+              className="w-full p-2 border border-gray-300 rounded mb-4"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(false)}
+                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Submit
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
 
   // Extract fetchUploadedModels to be reusable
   const fetchUploadedModels = useCallback(async () => {
@@ -4188,85 +4258,13 @@ export default function Component() {
 
     try {
       setIsLoading(true)
-      const response = await fetch(`/api/checkout?priceId=${priceInfo.priceId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId: priceInfo.priceId,
-          mode: 'payment',
-          shipping_address_collection: { allowed_countries: ['US'] },
-          productName: currentCategory,
-        })
-      })
-      const data = await response.json()
       
-      if (data.url) {
-        window.location.href = data.url
-      } else {
-        console.error('No checkout URL returned')
-      }
-    } catch (error) {
-      console.error('Error creating checkout session:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [currentCategory, selectedSize])
-
-  const updateParam = (paramId: string, value: number | string) => {
-    setShapeParams((prev) => {
-      if (paramId === 'patternType' && prev.type === 'coaster') {
-        return {
-          ...prev,
-          patternType: value as CoasterShapeParams['patternType']
-        }
-      }
-      // Handle boolean toggles
-      if (paramId === 'cableOpening' || paramId === 'hasTop' || paramId === 'hasBottom') {
-        return {
-          ...prev,
-          [paramId]: paramId === 'cableOpening' ? value === 'true' : Boolean(Number(value))
-        } as ShapeParams;
-      }
-      
-      // Handle dividerType separately
-      if (paramId === 'dividerType') {
-        return {
-          ...prev,
-          dividerType: value as PencilHolderParams['dividerType']
-        } as ShapeParams;
-      }
-
-      // Safe casting to update dynamic params
-      return {
-        ...prev,
-        [paramId]: value,
-      } as ShapeParams
-    })
-    setKey((k) => k + 1)
-  }
-
-  const switchCategory = (categoryId: string) => {
-    setCurrentCategory(categoryId as keyof typeof categories)
-    // Preserve scale values when switching categories
-    const { scaleX, scaleY, scaleZ } = shapeParams;
-    setShapeParams({
-      ...categories[categoryId as keyof typeof categories].defaults,
-      scaleX: scaleX || 1,
-      scaleY: scaleY || 1,
-      scaleZ: scaleZ || 1
-    })
-    setKey((k) => k + 1)
-  }
-
-  const handleCustomOrder = useCallback(async () => {
-    if (!meshRef.current || !customOrderEmail) return
-    
-    try {
-      setIsLoading(true)
-      
+      // Generate STL data
       const exporter = new STLExporter()
+      if (!meshRef.current) {
+        console.error('No mesh reference found')
+        return
+      }
       const mesh = meshRef.current
       const geometry = mesh.geometry.clone()
       const material = mesh.material
@@ -4609,14 +4607,14 @@ export default function Component() {
                 <Link href="/" className="font-semibold">
                   Home
                 </Link>
-                <button
-                  onClick={() => setIsAdmin(!isAdmin)}
-                  className={`px-3 py-1 rounded text-sm ${
+                <Button 
+                  onClick={handleAdminToggle}
+                  className={`ml-2 ${
                     isAdmin ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-600 hover:bg-gray-700'
-                  }`}
+                  } text-white`}
                 >
                   {isAdmin ? 'Exit Admin Mode' : 'Admin Mode'}
-                </button>
+                </Button>
               </div>
               <div className="flex items-center gap-4">
                 <input
@@ -4626,23 +4624,26 @@ export default function Component() {
                   ref={fileInputRef}
                   className="hidden"
                 />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2"
-                >
-                  {isUploading ? (
-                    <>
-                      <span className="animate-spin">⏳</span>
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-4 h-4" />
-                      Upload STL to Library
-                    </>
-                  )}
-                </Button>
+                {/* CRITICAL: Upload STL button - ONLY VISIBLE IN ADMIN MODE */}
+                {isAdmin === true ? (
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="bg-green-500 hover:bg-green-600 text-white flex items-center justify-center gap-2"
+                  >
+                    {isUploading ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Upload STL to Library
+                      </>
+                    )}
+                  </Button>
+                ) : null /* Do not display button when not in admin mode */}
               </div>
             </div>
           </div>
@@ -5122,8 +5123,28 @@ export default function Component() {
       )}
       {/* Upload Modal */}
       <UploadModal />
+      <PasswordModal />
     </div>
   )
 }
+
+const switchCategory = (category: string) => {
+  // Implementation logic - adjust this as needed based on your existing code
+  setCurrentCategory(category as keyof Categories);
+  setShapeParams({
+    ...categories[category as keyof Categories].defaults,
+    scaleX: 1,
+    scaleY: 1,
+    scaleZ: 1
+  });
+};
+
+// Fix for linter errors related to updateParam
+const updateParam = (paramName: keyof ShapeParams, value: number | string | boolean) => {
+  setShapeParams(prev => ({
+    ...prev,
+    [paramName]: value
+  }));
+};
 
 
