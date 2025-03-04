@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://jaihtntzjyospdjjqris.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphaWh0bnR6anlvc3BkampxcmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2MTg2NDksImV4cCI6MjA1NjE5NDY0OX0.HGAcuxvbwxc3fBcfvX7DD_if88JOxuWqxn3d_nBQNFM'
+// Use environment variables if available, otherwise fall back to hardcoded values for development
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jaihtntzjyospdjjqris.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphaWh0bnR6anlvc3BkampxcmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA2MTg2NDksImV4cCI6MjA1NjE5NDY0OX0.HGAcuxvbwxc3fBcfvX7DD_if88JOxuWqxn3d_nBQNFM'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
