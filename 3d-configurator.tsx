@@ -671,7 +671,7 @@ interface CoasterShapeParams extends BaseShapeParams {
   type: 'coaster'
   diameter: number
   thickness: number
-  patternType: 'hexagonal' | 'spiral' | 'concentric' | 'floral' | 'ripple' | 'maze'
+  patternType: 'hexagonal' | 'spiral' | 'concentric' | 'floral' | 'ripple' | 'maze' | 'geometric' | 'lattice' | 'organic' | 'waves' | 'chevron' | 'radial'
   patternScale: number
   patternDepth: number
   rimHeight: number
@@ -1037,6 +1037,45 @@ function generateCoasterGeometry(params: CoasterShapeParams) {
             y += (Math.sin(gridX) * Math.cos(gridZ) + 
                   Math.cos(gridX * 0.5) * Math.sin(gridZ * 0.5)) * patternDepth
             break
+          case 'geometric':
+            // Geometric pattern with angular shapes
+            const geoScale = patternScale * 5
+            const geoX = Math.abs(Math.sin(x * geoScale)) * Math.abs(Math.cos(z * geoScale))
+            const geoZ = Math.abs(Math.cos(x * geoScale)) * Math.abs(Math.sin(z * geoScale))
+            y += (geoX + geoZ) * patternDepth * 0.8
+            break
+          case 'lattice':
+            // Interwoven lattice pattern
+            const latScale = patternScale * 8
+            y += (Math.abs(Math.sin(x * latScale)) + Math.abs(Math.sin(z * latScale)) - 
+                 Math.abs(Math.sin(x * latScale) * Math.sin(z * latScale))) * patternDepth * 0.6
+            break
+          case 'organic':
+            // Organic, flowing pattern
+            const noiseScale = patternScale * 4
+            y += (Math.sin(x * noiseScale + Math.cos(z * noiseScale * 0.8)) *
+                 Math.cos(z * noiseScale * 0.7 + Math.sin(x * noiseScale * 0.5))) * patternDepth
+            break
+          case 'waves':
+            // Undulating wave pattern
+            const waveFreq = patternScale * 6
+            const centerDist = Math.sqrt(x * x + z * z) / (diameter / 2)
+            y += Math.sin(centerDist * waveFreq * Math.PI) * patternDepth * (1 - centerDist * 0.5)
+            break
+          case 'chevron':
+            // Chevron/zigzag pattern
+            const chevScale = patternScale * 6
+            const chevDist = Math.abs(((x * chevScale) % (Math.PI * 2)) - Math.PI) / Math.PI
+            const chevDist2 = Math.abs(((z * chevScale) % (Math.PI * 2)) - Math.PI) / Math.PI
+            y += (chevDist * chevDist2) * patternDepth * 1.2
+            break
+          case 'radial':
+            // Radial sunburst pattern
+            const radFreq = Math.round(patternScale * 10) + 5 // Number of "rays"
+            const angle2 = Math.atan2(z, x)
+            const radialDist = Math.sqrt(x * x + z * z) / (diameter / 2)
+            y += Math.pow(Math.abs(Math.cos(angle2 * radFreq)), 1.5) * radialDist * patternDepth
+            break
         }
         
         // Add subtle noise to all patterns
@@ -1069,6 +1108,12 @@ function generateCoasterGeometry(params: CoasterShapeParams) {
           case 'floral':
           case 'ripple':
           case 'maze':
+          case 'geometric':
+          case 'lattice':
+          case 'organic':
+          case 'waves':
+          case 'chevron':
+          case 'radial':
             // Add a subtle slope toward center
             const centerDir = -radius / (diameter / 2) * 0.2;
             nx += Math.cos(angle) * centerDir;
