@@ -4810,6 +4810,30 @@ export default function Component() {
       const blob = new Blob([stl], { type: 'application/sla' });
       const modelName = `${currentCategory}_3d_model.stl`;
       
+      // Function to show feedback toast
+      const showFeedbackToast = (message: string, isSuccess = true) => {
+        const toast = document.createElement('div');
+        toast.textContent = message;
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.left = '50%';
+        toast.style.transform = 'translateX(-50%)';
+        toast.style.padding = '12px 24px';
+        toast.style.backgroundColor = isSuccess ? taiyakiDesign.colors.primaryBlue : '#f44336';
+        toast.style.color = '#fff';
+        toast.style.borderRadius = '4px';
+        toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+        toast.style.zIndex = '9999';
+        document.body.appendChild(toast);
+        
+        // Remove the toast after 3 seconds
+        setTimeout(() => {
+          if (document.body.contains(toast)) {
+            document.body.removeChild(toast);
+          }
+        }, 3000);
+      };
+      
       // Send the STL content to fishcad.com using postMessage
       // Only send if we're in an iframe
       if (window.top !== window.self) {
@@ -4828,39 +4852,32 @@ export default function Component() {
                 modelName: modelName,
                 timestamp: new Date().toISOString()
               }
-            }, 'https://fishcad.com');
+            }, '*'); // Use * to work in development, in production use 'https://fishcad.com'
             
-            // Show a nicer feedback notification instead of an alert
-            const toast = document.createElement('div');
-            toast.textContent = 'Model sent to FishCAD successfully!';
-            toast.style.position = 'fixed';
-            toast.style.bottom = '20px';
-            toast.style.left = '50%';
-            toast.style.transform = 'translateX(-50%)';
-            toast.style.padding = '12px 24px';
-            toast.style.backgroundColor = taiyakiDesign.colors.primaryBlue;
-            toast.style.color = '#fff';
-            toast.style.borderRadius = '4px';
-            toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
-            toast.style.zIndex = '9999';
-            document.body.appendChild(toast);
-            
-            // Remove the toast after 3 seconds
-            setTimeout(() => {
-              if (document.body.contains(toast)) {
-                document.body.removeChild(toast);
-              }
-            }, 3000);
+            showFeedbackToast('Model sent to FishCAD successfully!');
           };
           reader.readAsDataURL(blob);
         } catch (error) {
           console.error('Error sending message to parent:', error);
-          alert('Failed to send model to FishCAD. Please try again.');
+          showFeedbackToast('Failed to send model to FishCAD. Please try again.', false);
         }
       } else {
-        // Not in an iframe - show test message
-        console.log('Not in iframe, would send to FishCAD:', modelName);
-        alert('This feature works when embedded in FishCAD.');
+        // Not in an iframe - attempt to open FishCAD in a new window
+        console.log('Not in iframe, opening FishCAD in new window...');
+        
+        // Create a temporary link to download in this test environment
+        const url = URL.createObjectURL(blob);
+        
+        // Download the STL file as a fallback
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = modelName;
+        link.click();
+        
+        // Open FishCAD.com in a new window/tab
+        window.open('https://fishcad.com', '_blank');
+        
+        showFeedbackToast('STL downloaded. Opening FishCAD in a new tab.');
       }
       
     } catch (error) {
@@ -5171,7 +5188,7 @@ export default function Component() {
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
-                    className="w-full flex items-center justify-center gap-2"
+                    className="w-full flex items-center justify-center gap-2 py-3 h-auto text-base"
                     style={{ 
                       background: taiyakiDesign.colors.yellow,
                       color: taiyakiDesign.colors.navy
@@ -5184,38 +5201,38 @@ export default function Component() {
                       </>
                     ) : (
                       <>
-                        <Upload className="w-4 h-4" />
+                        <Upload className="w-5 h-5" />
                         Upload STL to Library
                       </>
                     )}
                   </Button>
                 )}
                 
-                {/* Button group for download and FishCAD */}
-                <div className="grid grid-cols-2 gap-2">
+                {/* Better spaced button group for download and FishCAD */}
+                <div className="flex flex-col space-y-2">
                   <Button
                     onClick={handleExportSTL}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2"
+                    className="w-full flex items-center justify-center gap-2 py-3 h-auto text-base"
                     style={{ 
                       background: taiyakiDesign.colors.primaryBlue,
                       color: taiyakiDesign.colors.white
                     }}
                   >
-                    <Download className="w-4 h-4" />
+                    <Download className="w-5 h-5" />
                     Download STL
                   </Button>
                   
                   <Button
                     onClick={handleSendToFishCAD}
                     disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2"
+                    className="w-full flex items-center justify-center gap-2 py-3 h-auto text-base"
                     style={{ 
                       background: taiyakiDesign.colors.orange,
                       color: taiyakiDesign.colors.white
                     }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
                       <polyline points="10 17 15 12 10 7" />
                       <line x1="15" y1="12" x2="3" y2="12" />
