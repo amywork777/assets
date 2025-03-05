@@ -601,7 +601,7 @@ interface MaterialProps {
 }
 
 interface MaterialConfig {
-  type: 'standard' | 'basic';
+  type: 'standard' | 'basic' | 'physical';
   props: MaterialProps;
 }
 
@@ -614,15 +614,12 @@ const materials: Record<string, MaterialConfig> = {
       roughness: 0.1,
       reflectivity: 1.0,
       envMapIntensity: 2.0,
-      metalness: 1.0,
-      roughness: 0.2,
       clearcoat: 1.0,
       clearcoatRoughness: 0.1,
-      envMapIntensity: 1.5,
       opacity: 1,
       transparent: true,
       side: DoubleSide,
-    },
+    }
   },
   matte: {
     type: 'standard',
@@ -4790,6 +4787,90 @@ export default function Component() {
     }
   };
 
+  // Add a new function to handle sending STL to FishCAD after the handleExportSTL function
+  const handleSendToFishCAD = useCallback(async () => {
+    if (!meshRef.current) {
+      console.error('No mesh reference found');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      console.log('Generating STL data for FishCAD...');
+      
+      // Generate STL data - similar to handleExportSTL
+      const exporter = new STLExporter();
+      const mesh = meshRef.current;
+      const geometry = mesh.geometry.clone();
+      const material = mesh.material;
+      const exportMesh = new THREE.Mesh(geometry, material);
+      const stl = exporter.parse(exportMesh);
+      
+      // Create blob and get URL
+      const blob = new Blob([stl], { type: 'application/sla' });
+      const modelName = `${currentCategory}_3d_model.stl`;
+      
+      // Send the STL content to fishcad.com using postMessage
+      // Only send if we're in an iframe
+      if (window.top !== window.self) {
+        try {
+          // Instead of sending the blob URL (which won't work across origins),
+          // Convert to a data URL that can be used directly
+          const reader = new FileReader();
+          reader.onload = function() {
+            const dataUrl = reader.result;
+            
+            // Send the message with explicit target origin for security
+            window.parent.postMessage({
+              type: 'ADD_TO_FISHCAD',
+              payload: {
+                stlData: dataUrl,
+                modelName: modelName,
+                timestamp: new Date().toISOString()
+              }
+            }, 'https://fishcad.com');
+            
+            // Show a nicer feedback notification instead of an alert
+            const toast = document.createElement('div');
+            toast.textContent = 'Model sent to FishCAD successfully!';
+            toast.style.position = 'fixed';
+            toast.style.bottom = '20px';
+            toast.style.left = '50%';
+            toast.style.transform = 'translateX(-50%)';
+            toast.style.padding = '12px 24px';
+            toast.style.backgroundColor = taiyakiDesign.colors.primaryBlue;
+            toast.style.color = '#fff';
+            toast.style.borderRadius = '4px';
+            toast.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+            toast.style.zIndex = '9999';
+            document.body.appendChild(toast);
+            
+            // Remove the toast after 3 seconds
+            setTimeout(() => {
+              if (document.body.contains(toast)) {
+                document.body.removeChild(toast);
+              }
+            }, 3000);
+          };
+          reader.readAsDataURL(blob);
+        } catch (error) {
+          console.error('Error sending message to parent:', error);
+          alert('Failed to send model to FishCAD. Please try again.');
+        }
+      } else {
+        // Not in an iframe - show test message
+        console.log('Not in iframe, would send to FishCAD:', modelName);
+        alert('This feature works when embedded in FishCAD.');
+      }
+      
+    } catch (error) {
+      console.error('Error in handleSendToFishCAD:', error);
+      alert('An error occurred while processing your request. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [meshRef, currentCategory]);
+
   // Add admin toggle button in the header
   return (
     <div className="min-h-screen pb-20" style={{ 
@@ -5110,18 +5191,38 @@ export default function Component() {
                   </Button>
                 )}
                 
-                <Button
-                  onClick={handleExportSTL}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-center gap-2"
-                  style={{ 
-                    background: taiyakiDesign.colors.primaryBlue,
-                    color: taiyakiDesign.colors.white
-                  }}
-                >
-                  <Download className="w-4 h-4" />
-                  Download STL
-                </Button>
+                {/* Button group for download and FishCAD */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    onClick={handleExportSTL}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2"
+                    style={{ 
+                      background: taiyakiDesign.colors.primaryBlue,
+                      color: taiyakiDesign.colors.white
+                    }}
+                  >
+                    <Download className="w-4 h-4" />
+                    Download STL
+                  </Button>
+                  
+                  <Button
+                    onClick={handleSendToFishCAD}
+                    disabled={isLoading}
+                    className="w-full flex items-center justify-center gap-2"
+                    style={{ 
+                      background: taiyakiDesign.colors.orange,
+                      color: taiyakiDesign.colors.white
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                      <polyline points="10 17 15 12 10 7" />
+                      <line x1="15" y1="12" x2="3" y2="12" />
+                    </svg>
+                    Add to FishCAD
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
