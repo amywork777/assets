@@ -4807,7 +4807,7 @@ export default function Component() {
       const stl = exporter.parse(exportMesh);
       
       // Create blob and get URL
-      const blob = new Blob([stl], { type: 'application/sla' });
+      const blob = new Blob([stl], { type: 'application/octet-stream' });
       const modelName = `${currentCategory}_3d_model.stl`;
       
       // Function to show feedback toast
@@ -4835,27 +4835,53 @@ export default function Component() {
       };
       
       // Send the STL content to fishcad.com using postMessage
-      // Only send if we're in an iframe
+      console.log('Checking if we are in an iframe...');
       if (window.top !== window.self) {
         try {
+          console.log('We are in an iframe, preparing to send data to parent');
           // Instead of sending the blob URL (which won't work across origins),
           // Convert to a data URL that can be used directly
           const reader = new FileReader();
           reader.onload = function() {
             const dataUrl = reader.result;
+            console.log('STL converted to data URL, length:', (dataUrl as string).length);
             
-            // Send the message with explicit target origin for security
-            window.parent.postMessage({
+            // Try to detect the parent origin for better security
+            let targetOrigin = '*';
+            try {
+              // This will fail if cross-origin, which is okay
+              if (window.parent.location.origin) {
+                targetOrigin = window.parent.location.origin;
+                console.log('Detected parent origin:', targetOrigin);
+              }
+            } catch (e) {
+              console.log('Could not detect parent origin, using * (less secure)');
+            }
+            
+            const message = {
               type: 'ADD_TO_FISHCAD',
               payload: {
                 stlData: dataUrl,
                 modelName: modelName,
                 timestamp: new Date().toISOString()
               }
-            }, '*'); // Use * to work in development, in production use 'https://fishcad.com'
+            };
+            
+            console.log('Sending message to parent:', message.type);
+            
+            // Send the message
+            window.parent.postMessage(message, targetOrigin);
+            console.log('Message sent to parent window');
             
             showFeedbackToast('Model sent to FishCAD successfully!');
           };
+          
+          reader.onerror = function(error) {
+            console.error('Error reading STL as data URL:', error);
+            showFeedbackToast('Failed to convert model data. Please try again.', false);
+          };
+          
+          console.log('Reading STL as data URL...');
           reader.readAsDataURL(blob);
         } catch (error) {
           console.error('Error sending message to parent:', error);
