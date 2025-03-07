@@ -5209,7 +5209,7 @@ export default function Component() {
         
         {/* Products grid */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Products</h2>
+          {/* Removed the Products title */}
           
           {/* Category Filter Tabs */}
           <div className="mb-4 flex flex-wrap gap-2">
@@ -5368,6 +5368,15 @@ export default function Component() {
               border: '1px solid rgba(0,0,0,0.05)',
             }}
           >
+            {/* Add loading overlay */}
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center z-10 bg-black bg-opacity-30">
+                <div className="bg-white p-4 rounded-lg shadow-lg flex flex-col items-center">
+                  <div className="w-8 h-8 border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin mb-2"></div>
+                  <p className="text-gray-800 font-medium">Loading STL...</p>
+                </div>
+              </div>
+            )}
             <div className="absolute inset-0">
               <Canvas camera={{ position: [70, 35, 70], fov: 20 }} className="w-full h-full">
                 <Suspense fallback={null}>
@@ -5840,8 +5849,17 @@ export default function Component() {
                       color: taiyakiDesign.colors.white
                     }}
                   >
-                    <Download className="w-5 h-5" />
-                    Download STL
+                    {isLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-t-white border-r-transparent border-b-transparent border-l-transparent rounded-full animate-spin"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-5 h-5" />
+                        Download STL
+                      </>
+                    )}
                   </Button>
                   
                   {/* Instructions box replacing the FishCAD button */}
