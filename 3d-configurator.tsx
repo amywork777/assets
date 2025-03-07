@@ -709,7 +709,7 @@ interface BowlParams extends BaseShapeParams {
 
 interface CylinderBaseParams extends BaseShapeParams {
   type: 'cylinderBase'
-  shape: 'cylinder' | 'flower' | 'square'
+  shape: 'cylinder' | 'flower' | 'square' | 'hexagon' | 'octagon' | 'star' | 'organic';
   height: number
   diameter: number
   flowerPetals?: number   // Number of petals when shape is 'flower'
@@ -775,7 +775,7 @@ interface MonitorStandParams extends BaseShapeParams {
   depth: number; // Depth of the stand in inches
   height: number; // Height of the stand in inches
   thickness: number; // Thickness of the platform in inches
-  legStyle: 'minimal' | 'solid'; // Style of the supporting legs
+  legStyle: 'minimal' | 'solid' | 'angled' | 'curved' | 'geometric' | 'floating'; // Style of the supporting legs
 }
 
 interface JewelryHolderParams extends BaseShapeParams {
@@ -783,10 +783,10 @@ interface JewelryHolderParams extends BaseShapeParams {
   baseWidth: number; // Width of the base in inches
   baseDepth: number; // Depth of the base in inches
   baseHeight: number; // Height of the base in inches
-  baseStyle: 'square' | 'round' | 'curved' | 'tiered'; // Style of the base
+  baseStyle: 'square' | 'round' | 'curved' | 'tiered' | 'hexagonal' | 'organic' | 'geometric'; // Style of the base
   pegHeight: number; // Height of the jewelry pegs in inches
   pegDiameter: number; // Diameter of the pegs in inches
-  pegArrangement: 'linear' | 'circular' | 'scattered'; // Arrangement pattern of pegs
+  pegArrangement: 'linear' | 'circular' | 'scattered' | 'spiral' | 'grid'; // Arrangement pattern of pegs
   pegCount: number; // Number of pegs for jewelry items
 }
 
@@ -797,7 +797,7 @@ interface NapkinHolderParams extends BaseShapeParams {
   baseHeight: number;
   wallThickness: number;
   wallHeight: number;
-  wallStyle: 'curved' | 'straight';
+  wallStyle: 'curved' | 'straight' | 'wavy' | 'perforated' | 'geometric' | 'organic';
   openingWidth: number;
 }
 
@@ -5422,10 +5422,323 @@ export default function Component() {
                     </Select>
                   </div>
                   
-                  {/* Keep all existing customization controls the same */}
-                  {/* ... existing customization controls ... */}
+                  {/* Add Pattern Type selector for relevant shape types */}
+                  {(shapeParams.type === 'coaster' || 
+                    shapeParams.type === 'wallArt' || 
+                    shapeParams.type === 'candleHolder' || 
+                    shapeParams.type === 'bracelet' || 
+                    shapeParams.type === 'ring' || 
+                    shapeParams.type === 'bowl') && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Pattern Type</Label>
+                      <Select
+                        value={(() => {
+                          if (shapeParams.type === 'coaster') {
+                            return (shapeParams as CoasterShapeParams).patternType;
+                          } else if (shapeParams.type === 'wallArt') {
+                            return (shapeParams as WallArtParams).patternType;
+                          } else if (shapeParams.type === 'candleHolder' || shapeParams.type === 'bowl') {
+                            return (shapeParams as CandleHolderParams).patternType;
+                          } else if (shapeParams.type === 'bracelet' || shapeParams.type === 'ring') {
+                            return (shapeParams as BraceletParams).patternType;
+                          }
+                          return '';
+                        })()}
+                        onValueChange={(value) => updateParam("patternType", value)}
+                      >
+                        <SelectTrigger 
+                          className="border"
+                          style={{ 
+                            background: 'rgba(0,0,0,0.05)',
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom" 
+                          className="border"
+                          style={{ 
+                            background: taiyakiDesign.colors.white,
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          {shapeParams.type === 'coaster' && (
+                            <>
+                              <SelectItem value="hexagonal">Hexagonal</SelectItem>
+                              <SelectItem value="spiral">Spiral</SelectItem>
+                              <SelectItem value="concentric">Concentric</SelectItem>
+                              <SelectItem value="floral">Floral</SelectItem>
+                              <SelectItem value="ripple">Ripple</SelectItem>
+                              <SelectItem value="maze">Maze</SelectItem>
+                              <SelectItem value="geometric">Geometric</SelectItem>
+                              <SelectItem value="lattice">Lattice</SelectItem>
+                              <SelectItem value="organic">Organic</SelectItem>
+                              <SelectItem value="waves">Waves</SelectItem>
+                              <SelectItem value="chevron">Chevron</SelectItem>
+                              <SelectItem value="radial">Radial</SelectItem>
+                            </>
+                          )}
+                          {shapeParams.type === 'wallArt' && (
+                            <>
+                              <SelectItem value="mandala">Mandala</SelectItem>
+                              <SelectItem value="wave">Wave</SelectItem>
+                              <SelectItem value="honeycomb">Honeycomb</SelectItem>
+                              <SelectItem value="circuit">Circuit</SelectItem>
+                              <SelectItem value="organic">Organic</SelectItem>
+                            </>
+                          )}
+                          {(shapeParams.type === 'candleHolder' || shapeParams.type === 'bowl') && (
+                            <>
+                              <SelectItem value="geometric">Geometric</SelectItem>
+                              <SelectItem value="stars">Stars</SelectItem>
+                              <SelectItem value="leaves">Leaves</SelectItem>
+                              <SelectItem value="abstract">Abstract</SelectItem>
+                            </>
+                          )}
+                          {(shapeParams.type === 'bracelet' || shapeParams.type === 'ring') && (
+                            <>
+                              <SelectItem value="plain">Plain</SelectItem>
+                              <SelectItem value="waves">Waves</SelectItem>
+                              <SelectItem value="geometric">Geometric</SelectItem>
+                              <SelectItem value="organic">Organic</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   
-                  {/* Show customization sliders with styled appearance */}
+                  {/* Product-specific controls */}
+                  {shapeParams.type === 'cylinderBase' && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Base Shape</Label>
+                      <Select
+                        value={(shapeParams as CylinderBaseParams).shape}
+                        onValueChange={(value) => updateParam("shape", value)}
+                      >
+                        <SelectTrigger 
+                          className="border"
+                          style={{ 
+                            background: 'rgba(0,0,0,0.05)',
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom" 
+                          className="border"
+                          style={{ 
+                            background: taiyakiDesign.colors.white,
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectItem value="cylinder">Cylinder</SelectItem>
+                          <SelectItem value="flower">Flower</SelectItem>
+                          <SelectItem value="square">Square</SelectItem>
+                          <SelectItem value="hexagon">Hexagon</SelectItem>
+                          <SelectItem value="octagon">Octagon</SelectItem>
+                          <SelectItem value="star">Star</SelectItem>
+                          <SelectItem value="organic">Organic</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {shapeParams.type === 'pencilHolder' && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Holder Shape</Label>
+                      <Select
+                        value={(shapeParams as PencilHolderParams).shape}
+                        onValueChange={(value) => updateParam("shape", value)}
+                      >
+                        <SelectTrigger 
+                          className="border"
+                          style={{ 
+                            background: 'rgba(0,0,0,0.05)',
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom" 
+                          className="border"
+                          style={{ 
+                            background: taiyakiDesign.colors.white,
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectItem value="circle">Circle</SelectItem>
+                          <SelectItem value="square">Square</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {shapeParams.type === 'napkinHolder' && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Wall Style</Label>
+                      <Select
+                        value={(shapeParams as NapkinHolderParams).wallStyle}
+                        onValueChange={(value) => updateParam("wallStyle", value)}
+                      >
+                        <SelectTrigger 
+                          className="border"
+                          style={{ 
+                            background: 'rgba(0,0,0,0.05)',
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom" 
+                          className="border"
+                          style={{ 
+                            background: taiyakiDesign.colors.white,
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectItem value="curved">Curved</SelectItem>
+                          <SelectItem value="straight">Straight</SelectItem>
+                          <SelectItem value="wavy">Wavy</SelectItem>
+                          <SelectItem value="perforated">Perforated</SelectItem>
+                          <SelectItem value="geometric">Geometric</SelectItem>
+                          <SelectItem value="organic">Organic</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {shapeParams.type === 'monitorStand' && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Leg Style</Label>
+                      <Select
+                        value={(shapeParams as MonitorStandParams).legStyle}
+                        onValueChange={(value) => updateParam("legStyle", value)}
+                      >
+                        <SelectTrigger 
+                          className="border"
+                          style={{ 
+                            background: 'rgba(0,0,0,0.05)',
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom" 
+                          className="border"
+                          style={{ 
+                            background: taiyakiDesign.colors.white,
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectItem value="minimal">Minimal</SelectItem>
+                          <SelectItem value="solid">Solid</SelectItem>
+                          <SelectItem value="angled">Angled</SelectItem>
+                          <SelectItem value="curved">Curved</SelectItem>
+                          <SelectItem value="geometric">Geometric</SelectItem>
+                          <SelectItem value="floating">Floating</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {shapeParams.type === 'jewelryHolder' && (
+                    <div className="space-y-3">
+                      <Label className="text-sm font-medium">Base Style</Label>
+                      <Select
+                        value={(shapeParams as JewelryHolderParams).baseStyle}
+                        onValueChange={(value) => updateParam("baseStyle", value)}
+                      >
+                        <SelectTrigger 
+                          className="border"
+                          style={{ 
+                            background: 'rgba(0,0,0,0.05)',
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom" 
+                          className="border"
+                          style={{ 
+                            background: taiyakiDesign.colors.white,
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectItem value="square">Square</SelectItem>
+                          <SelectItem value="round">Round</SelectItem>
+                          <SelectItem value="curved">Curved</SelectItem>
+                          <SelectItem value="tiered">Tiered</SelectItem>
+                          <SelectItem value="hexagonal">Hexagonal</SelectItem>
+                          <SelectItem value="organic">Organic</SelectItem>
+                          <SelectItem value="geometric">Geometric</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {shapeParams.type === 'jewelryHolder' && (
+                    <div className="space-y-3 mt-3">
+                      <Label className="text-sm font-medium">Peg Arrangement</Label>
+                      <Select
+                        value={(shapeParams as JewelryHolderParams).pegArrangement}
+                        onValueChange={(value) => updateParam("pegArrangement", value)}
+                      >
+                        <SelectTrigger 
+                          className="border"
+                          style={{ 
+                            background: 'rgba(0,0,0,0.05)',
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom" 
+                          className="border"
+                          style={{ 
+                            background: taiyakiDesign.colors.white,
+                            color: taiyakiDesign.colors.navy,
+                            borderColor: 'rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          <SelectItem value="linear">Linear</SelectItem>
+                          <SelectItem value="circular">Circular</SelectItem>
+                          <SelectItem value="scattered">Scattered</SelectItem>
+                          <SelectItem value="spiral">Spiral</SelectItem>
+                          <SelectItem value="grid">Grid</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {/* Keep all existing customization controls the same */}
                   {getControlsForType(shapeParams.type, shapeParams).map((control) => (
                     <div key={control.id} className="space-y-3">
                       <div className="flex items-center justify-between">
