@@ -5844,22 +5844,27 @@ export default function Component() {
                     Download STL
                   </Button>
                   
-                  <Button
-                    onClick={handleSendToFishCAD}
-                    disabled={isLoading}
-                    className="w-full flex items-center justify-center gap-2 py-3 h-auto text-base"
-                    style={{ 
-                      background: taiyakiDesign.colors.orange,
-                      color: taiyakiDesign.colors.white
+                  {/* Instructions box replacing the FishCAD button */}
+                  <div 
+                    className="w-full p-4 rounded-md mt-4 border text-sm"
+                    style={{
+                      borderColor: '#DDDDDD', // use a generic light gray instead of taiyakiDesign.colors.lightGray
+                      background: '#F5F5F5'  // use a generic light background instead of taiyakiDesign.colors.lightBackground
                     }}
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                      <polyline points="10 17 15 12 10 7" />
-                      <line x1="15" y1="12" x2="3" y2="12" />
-                    </svg>
-                    Add to FishCAD
-                  </Button>
+                    <h3 className="font-semibold mb-2 text-base">How to Use This Model in FISHCAD:</h3>
+                    <ol className="list-decimal pl-5 space-y-1">
+                      <li>
+                        <span className="font-medium">Download the STL File</span>
+                        <p className="text-xs mt-1">Click the download link above and note where the file is saved (usually your Downloads folder)</p>
+                      </li>
+                      <li>
+                        <span className="font-medium">Import into FISHCAD</span>
+                        <p className="text-xs mt-1">Go to FISHCAD.com, click the "Import" button in the top menu, and select your downloaded STL file</p>
+                      </li>
+                    </ol>
+                    <p className="mt-2 text-xs italic">That's it! You can now edit, modify, or use the model in your FISHCAD project.</p>
+                  </div>
                 </div>
               </div>
             </div>
