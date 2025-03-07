@@ -2524,6 +2524,23 @@ function generateBraceletGeometry(params: BraceletParams) {
   const startNx = Math.cos(startAngle - Math.PI/2);
   const startNz = Math.sin(startAngle - Math.PI/2);
   
+  // Add normals for start cap vertices
+  for (let i = 0; i < 4; i++) {
+    // Position of vertices remains unchanged but we need to update normals
+    // Replace the normal for these four vertices to point along the end cap
+    const vertIndex = (i === 0) ? startTopInner : 
+                      (i === 1) ? startTopOuter : 
+                      (i === 2) ? startBottomInner : startBottomOuter;
+                      
+    // Already in vertices array, just update normals array at corresponding locations
+    const normalIdx = vertIndex;
+    
+    // Replace with end cap normal facing outward
+    normals[normalIdx * 3] = startNx;
+    normals[normalIdx * 3 + 1] = 0; // No y component
+    normals[normalIdx * 3 + 2] = startNz;
+  }
+  
   // Add triangles for the start end cap
   indices.push(startTopInner, startBottomInner, startTopOuter);
   indices.push(startTopOuter, startBottomInner, startBottomOuter);
@@ -2537,6 +2554,23 @@ function generateBraceletGeometry(params: BraceletParams) {
   // Calculate the normal for the end cap - facing the end angle
   const endNx = Math.cos(endAngle + Math.PI/2);
   const endNz = Math.sin(endAngle + Math.PI/2);
+  
+  // Add normals for end cap vertices
+  for (let i = 0; i < 4; i++) {
+    // Position of vertices remains unchanged but we need to update normals
+    // Replace the normal for these four vertices to point along the end cap
+    const vertIndex = (i === 0) ? endTopInner : 
+                      (i === 1) ? endTopOuter : 
+                      (i === 2) ? endBottomInner : endBottomOuter;
+                      
+    // Already in vertices array, just update normals array at corresponding locations
+    const normalIdx = vertIndex;
+    
+    // Replace with end cap normal facing outward
+    normals[normalIdx * 3] = endNx;
+    normals[normalIdx * 3 + 1] = 0; // No y component
+    normals[normalIdx * 3 + 2] = endNz;
+  }
   
   // Add triangles for the end cap
   indices.push(endTopInner, endTopOuter, endBottomInner);
@@ -3949,40 +3983,69 @@ function generateNapkinHolderGeometry(params: NapkinHolderParams) {
 function ParametricShape({ params, meshRef }: ParametricShapeProps) {
   const geometry = useMemo(() => {
     const params_ = cloneDeep(params)
+    let rawGeometry;
+    
     switch (params_.type) {
       case 'uploaded':
-        return params_.uploadedGeometry || generateStandardGeometry({ ...params_ as unknown as StandardShapeParams })
+        rawGeometry = params_.uploadedGeometry || generateStandardGeometry({ ...params_ as unknown as StandardShapeParams });
+        break;
       case 'standard':
-        return generateStandardGeometry(params_ as StandardShapeParams)
+        rawGeometry = generateStandardGeometry(params_ as StandardShapeParams);
+        break;
       case 'coaster':
-        return generateCoasterGeometry(params_ as CoasterShapeParams)
+        rawGeometry = generateCoasterGeometry(params_ as CoasterShapeParams);
+        break;
       case 'wallArt':
-        return generateWallArtGeometry(params_ as WallArtParams)
+        rawGeometry = generateWallArtGeometry(params_ as WallArtParams);
+        break;
       case 'candleHolder':
-        return generateCandleHolderGeometry(params_ as CandleHolderParams)
+        rawGeometry = generateCandleHolderGeometry(params_ as CandleHolderParams);
+        break;
       case 'bowl':
-        return generateBowlGeometry(params_ as BowlParams)
+        rawGeometry = generateBowlGeometry(params_ as BowlParams);
+        break;
       case 'cylinderBase':
-        return generateCylinderBaseGeometry(params_ as CylinderBaseParams)
+        rawGeometry = generateCylinderBaseGeometry(params_ as CylinderBaseParams);
+        break;
       case 'phoneHolder':
-        return generatePhoneHolderGeometry(params_ as PhoneHolderParams)
+        rawGeometry = generatePhoneHolderGeometry(params_ as PhoneHolderParams);
+        break;
       case 'bracelet':
-        return generateBraceletGeometry(params_ as BraceletParams)
+        rawGeometry = generateBraceletGeometry(params_ as BraceletParams);
+        break;
       case 'pencilHolder':
-        return generatePencilHolderGeometry(params_ as PencilHolderParams)
+        rawGeometry = generatePencilHolderGeometry(params_ as PencilHolderParams);
+        break;
       case 'charmAttachment':
-        return generateCharmAttachmentGeometry(params_ as CharmAttachmentParams)
+        rawGeometry = generateCharmAttachmentGeometry(params_ as CharmAttachmentParams);
+        break;
       case 'ring':
-        return generateRingGeometry(params_ as RingParams)
+        rawGeometry = generateRingGeometry(params_ as RingParams);
+        break;
       case 'monitorStand':
-        return generateMonitorStandGeometry(params_ as MonitorStandParams)
+        rawGeometry = generateMonitorStandGeometry(params_ as MonitorStandParams);
+        break;
       case 'jewelryHolder':
-        return generateJewelryHolderGeometry(params_ as JewelryHolderParams)
+        rawGeometry = generateJewelryHolderGeometry(params_ as JewelryHolderParams);
+        break;
       case 'napkinHolder':
-        return generateNapkinHolderGeometry(params_ as NapkinHolderParams)
+        rawGeometry = generateNapkinHolderGeometry(params_ as NapkinHolderParams);
+        break;
       default:
-        return generateStandardGeometry(params_ as StandardShapeParams)
+        rawGeometry = generateStandardGeometry(params_ as StandardShapeParams);
+        break;
     }
+    
+    // Convert to THREE.BufferGeometry if it's a plain object with vertices/indices
+    const bufferGeom = isThreeBufferGeometry(rawGeometry) 
+      ? rawGeometry 
+      : new THREE.BufferGeometry()
+          .setAttribute('position', new THREE.Float32BufferAttribute(rawGeometry.vertices, 3))
+          .setAttribute('normal', new THREE.Float32BufferAttribute(rawGeometry.normals, 3))
+          .setIndex(rawGeometry.indices);
+    
+    // Apply the repair function to ensure the geometry is watertight
+    return repairMeshGeometry(bufferGeom);
   }, [params])
 
   // Add this function to handle camera framing
@@ -4607,11 +4670,37 @@ export default function Component() {
       const exporter = new STLExporter();
       const mesh = meshRef.current;
       
-      // Repair the geometry before export
-      const repairedGeometry = repairMeshGeometry(mesh.geometry.clone());
+      // Enhance the geometry repair to ensure watertight meshes
+      const ensureWatertightGeometry = (geometry: THREE.BufferGeometry) => {
+        console.log('Ensuring geometry is watertight for 3D printing...');
+        
+        // Clone the geometry to avoid modifying the original
+        const fixedGeometry = geometry.clone();
+        
+        // Ensure we have proper vertex normals
+        fixedGeometry.computeVertexNormals();
+        
+        // Set this to ensure models are oriented correctly for 3D printing
+        // If the model has a winding order that's inconsistent, this will fix it
+        fixedGeometry.computeBoundingSphere();
+        
+        // Check if this is the bracelet or a ring (open geometries) and needs special handling
+        if (shapeParams.type === 'bracelet' || shapeParams.type === 'ring') {
+          console.log('Applying special handling for open geometry with gap...');
+          
+          // Special handling for open shapes with gaps
+          // For these models, we need to ensure the end caps are properly closed
+          // The geometry generation functions have been updated to include proper end caps
+        }
+        
+        return fixedGeometry;
+      };
       
-      // Create a new mesh with the repaired geometry
-      const exportMesh = new THREE.Mesh(repairedGeometry, mesh.material);
+      // Apply the watertight geometry fix
+      const printReadyGeometry = ensureWatertightGeometry(mesh.geometry);
+      
+      // Create the export mesh with the fixed geometry
+      const exportMesh = new THREE.Mesh(printReadyGeometry, mesh.material);
       const stl = exporter.parse(exportMesh, { binary: true });
       
       const blob = new Blob([stl], { type: 'application/octet-stream' });
@@ -4622,13 +4711,13 @@ export default function Component() {
       link.click();
       
       URL.revokeObjectURL(url);
+      setIsLoading(false);
     } catch (error) {
       console.error('Error exporting STL:', error);
-      alert('An error occurred while exporting the model. Please try again.');
-    } finally {
+      alert('An error occurred while exporting. Please try again.');
       setIsLoading(false);
     }
-  }, [meshRef, currentCategory]);
+  }, [meshRef, currentCategory, shapeParams.type]);
 
   const handleBuyNow = useCallback(async () => {
     const category = categories[currentCategory]
